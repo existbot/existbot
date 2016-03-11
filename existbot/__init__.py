@@ -1,4 +1,4 @@
-#ExistBot 2016
+#EzzyBot 2016
 #Created by zz & Bowserinator (freenode)
 
 import socket
