@@ -11,6 +11,6 @@ setup(name='ezzybot',
       author_email='me@lukej.me',
       license='GNU',
       packages=find_packages(),
-      install_requires=['thingdb'],
+      install_requires=[],
       include_package_data=True,
       zip_safe=False)
