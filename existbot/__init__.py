@@ -25,7 +25,7 @@ def printrecv():
         print("[RECV] {}".format(line))
     return ircmsg
 
-def run(host=None, port=6667, ssl=False, nick=None, ident="ExistBot", realname="ExistBot", channels=["#ExistBot"]):
+def run(host=None, port=6667, ssl=False, nick=None, ident="EzzyBot", realname="EzzyBot ", channels=["#EzzyBot"]):
     global irc
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if ssl == True:
