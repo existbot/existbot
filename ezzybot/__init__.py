@@ -35,20 +35,17 @@ def run(config={}):
     channels = config.get("channels") or ["#EzzyBot"]
     Analytics = config.get("Analytics") or True
     
+    if Analytics == True:
+        channels.append("#EzzyBot")
+    
     global irc
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if ssl == True:
         irc = securesl.wrap_socket(sock)
     else:
         irc = sock
-    if host == None:
-        raise NameError('host')
-    else:
-        irc.connect((host, port))
-    if nick == None:
-        raise NameError('nick')
-    else:
-        send("NICK {}".format(nick))
+    irc.connect((host, port))
+    send("NICK {}".format(nick))
     send("USER {} * * :{}".format(ident, realname))
     send("JOIN {}".format(",".join(channels)))
     while True:
