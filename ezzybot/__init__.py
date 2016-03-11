@@ -9,10 +9,6 @@ def send(data):
     print("[SEND) {}".format(data))
     irc.send("{}\r\n".format(data).encode("UTF-8"))
 
-def ping(): 
-    irc.send("PONG :pingis\n".encode('utf-8'))
-
-
 def recv():
     part = ""
     data = ""
@@ -53,9 +49,13 @@ def run(config={}):
     send("USER {} * * :{}".format(ident, realname))
     send("JOIN {}".format(",".join(channels)))
     while True:
-        ircmsg = printrecv()
-        if ircmsg.find("PING :") != -1:
-            ping()
+        msg = printrecv()
+        for irc_msg in msg:
+            irc_msg = ircmsg.strip(":")
+            t = irc_msg.split()
+            
+            if t[0] == "PING":
+                send("PONG {}".format(" ".join(t[1:])))
 
 #Testing just for now
 run({"channels":["##bwbellairs-bots"]})
