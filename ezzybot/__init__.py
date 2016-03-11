@@ -4,6 +4,7 @@
 import socket
 import ssl as securesl
 from time import sleep
+import thingdb
 
 def send(data):
     print("[SEND) {}".format(data))
@@ -24,8 +25,12 @@ def printrecv():
     for line in ircmsg:
         print("[RECV) {}".format(line))
     return ircmsg
+    
+
+    
 
 def run(config={}):
+    global irc, db
     host = config.get("host") or "irc.freenode.net"
     port = config.get("port") or 6667
     ssl = config.get("ssl") or False
@@ -33,12 +38,11 @@ def run(config={}):
     ident = config.get("indent") or "EzzyBot"
     realname = config.get("realname") or "EzzyBot: a simple python framework for IRC bots."
     channels = config.get("channels") or ["#EzzyBot"]
-    Analytics = config.get("Analytics") or True
-    
+    analytics = config.get("analytics") or True
+
     if Analytics == True:
         channels.append("#EzzyBot")
     
-    global irc
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if ssl == True:
         irc = securesl.wrap_socket(sock)
