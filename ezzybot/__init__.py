@@ -5,6 +5,7 @@ import socket
 import ssl as securesl
 from time import sleep
 import traceback
+import json
 
 def send(data):
     print("[SEND) {}".format(data))
@@ -71,22 +72,29 @@ def run(config={}):
                     send("PONG {}".format(" ".join(t[1:])))
                 elif t[1] == "PRIVMSG":
                     ircmsg = irc_msg
-                    nick = ircmsg.split("!")[0][1:]
+                    nick = ircmsg.split("!")[0]
                     channel = ircmsg.split(' PRIVMSG ')[-1].split(' :')[0]
-                    hostmask = ircmsg.split(" PRIVMSG ")[0].split("@")[1].replace(" ","")
+                    hostname = ircmsg.split(" PRIVMSG ")[0].split("@")[1].replace(" ","")
+                    ident = ircmsg.split(" PRIVMSG ")[0].split("@")[0].split("!")[1]
+                    mask = ircmsg.split(" PRIVMSG ")[0]
+                    message = ircmsg.split(" :")[1]
+                    info = {"nick": nick, "channel": channel, "hostname": hostname, "ident": ident, "mask": mask, "message": message}
                     
-                    command = ircmsg.split(" :",1)[1]
+                    command = ircmsg.split(" :",1)[1].split(" ")[0]
                     if command in commands.keys():
-                        output =commands[command]['function']()
+                        output =commands[command]['function'](info=info)
                         if output != None:
                             sendmsg(channel,output)
-                    
-                # if len(t) >= 4:
-                #     command = t[3].replace(":", "", 1)
-                #     if command in commands.keys():
-                #         print commands[command]['function']()
     except KeyboardInterrupt:
         send("QUIT :{}".format(quit_message))
         irc.close()
     except:
         traceback.print_exc()
+
+#Testing area
+#def hello(info=None):
+#    return json.dumps(info)
+    
+#assign(function=hello, help_text="Returns 'Hello!'", commandname="hello")
+
+#run({"channels":[], "port": 6697, "ssl": True,"quit_message":"'I pretend I can touch BWBellairs[Bot] and the BWBellairs[Bot] would say something to me... '"})
