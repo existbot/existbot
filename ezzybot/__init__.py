@@ -39,6 +39,7 @@ def run(config={}):
     realname = config.get("realname") or "EzzyBot: a simple python framework for IRC bots."
     channels = config.get("channels") or ["#EzzyBot"]
     analytics = config.get("analytics") or True
+    quit_message = config.get("quit_message") or "EzzyBot: a simple python framework for IRC bots."
 
     if Analytics == True:
         channels.append("#EzzyBot")
@@ -52,14 +53,18 @@ def run(config={}):
     send("NICK {}".format(nick))
     send("USER {} * * :{}".format(ident, realname))
     send("JOIN {}".format(",".join(channels)))
-    while True:
-        msg = printrecv()
-        for irc_msg in msg:
-            irc_msg = ircmsg.strip(":")
-            t = irc_msg.split()
-            
-            if t[0] == "PING":
-                send("PONG {}".format(" ".join(t[1:])))
+    try:
+        while True:
+            msg = printrecv()
+            for irc_msg in msg:
+                irc_msg = ircmsg.strip(":")
+                t = irc_msg.split()
+                
+                if t[0] == "PING":
+                    send("PONG {}".format(" ".join(t[1:])))
+    except KeyboardInterrupt:
+        send("QUIT :{}".format(quit_message))
+        irc.close()
 
 #Testing just for now
 run({"channels":["##bwbellairs-bots"]})
