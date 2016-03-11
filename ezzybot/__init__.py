@@ -30,7 +30,7 @@ def printrecv():
     
 
 def run(config={}):
-    global irc, db
+    global irc
     host = config.get("host") or "irc.freenode.net"
     port = config.get("port") or 6667
     ssl = config.get("ssl") or False
