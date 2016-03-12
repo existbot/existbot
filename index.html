@@ -22,15 +22,25 @@
       <h1>
 <a id="ezzybot" class="anchor" href="#ezzybot" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>ezzybot</h1>
 
-<p><del>Can't be bothered to make your own bot or find it difficult?
-Your in luck, this is an irc bot framwork and tool.
-Its easy to setup and can just take a few minutes of your time allowing easy customisation</del></p>
+<p>EzzyBot is a IRC bot framework built in python.</p>
 
-<p>Wanna know more? (IRC) Freenode: ##BWBellairs-bots</p>
+<p>Example of use:</p>
+
+<pre><code>import ezzybot
+
+mybot = ezzybot.bot()
+
+def hello(info=None, conn=None):
+    return "Hello!"
+
+mybot.assign(function=hello, help_text="Returns 'Hello!'", commandname="hello")
+mybot.run({"channels":["#ezzybot"], "host": "irc.freenode.net", "port": 6697, "ssl": True, "nick": "EzzyBot"})
+</code></pre>
 
 <p>Devs are: zz, Bowserinator, BWBellairs</p>
 
-<p><a href="https://kiwiirc.com/client/chat.freenode.net/?nick=ezzy%7C?&amp;theme=cli#ezzybot"><img src="https://kiwiirc.com/buttons/chat.freenode.net/ezzybot.png" alt="Visit our IRC Chat!"></a></p>
+<p>Wanna know more? (IRC) Freenode: #ezzybot
+<a href="https://kiwiirc.com/client/chat.freenode.net/?nick=ezzy%7C?&amp;theme=cli#ezzybot"><img src="https://kiwiirc.com/buttons/chat.freenode.net/ezzybot.png" alt="Visit our IRC Chat!"></a></p>
 
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/ezzybot/ezzybot">Ezzybot</a> is maintained by <a href="https://github.com/ezzybot">ezzybot</a>.</span>
