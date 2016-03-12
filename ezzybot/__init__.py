@@ -120,7 +120,6 @@ class bot(object):
         self.send("NICK {}".format(self.nick))
         self.send("USER {} * * :{}".format(self.ident, self.realname))
         self.send("JOIN {}".format(",".join(self.channels)))
-        threads = {}
         try:
             while True:
                 self.msg = self.printrecv()
