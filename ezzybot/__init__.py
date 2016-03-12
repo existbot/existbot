@@ -125,8 +125,8 @@ def run(config={}):
                     message = ircmsg.split(" :")[1]
                     info = {"nick": nick, "channel": channel, "hostname": hostname, "ident": ident, "mask": mask, "message": message}
                     command = ircmsg.split(" :",1)[1].split(" ")[0]
-                    print command
-                    print commands.keys()
+                    #print command
+                    #print commands.keys()
                     if command in commands.keys():
                         plugin_wrapper=connection_wrapper(irc, flood_protection)
                         output =commands[command]['function'](info=info, conn=plugin_wrapper)
