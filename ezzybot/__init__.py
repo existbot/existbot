@@ -6,6 +6,8 @@ import ssl as securesl
 from time import sleep
 import traceback
 import json
+from Queue import Queue
+from threading import Thread
 
 def send(data):
     print("[SEND) {}".format(data))
@@ -35,12 +37,43 @@ def assign(function, help_text, commandname, prefix="!"):
 def sendmsg(chan, msg):
     irc.send("PRIVMSG {0} :{1}\n".format(chan, msg))#.encode('utf-8'))
     
+irc_queue = Queue()
+irc_queue_running = False
+
+def queue_thread():
+    global irc_queue, irc_queue_running
+    while True:
+        try:
+            connection, raw = irc_queue.get_nowait()
+        except:
+            irc_queue_running = False
+            break
+        connection.send(raw)
+        print "[QUEUE-SEND) "+raw
+        sleep(0.5)
+
+def queue_add(connection, raw):
+    global irc_queue, irc_queue_running
+    irc_queue.put((connection, raw))
+    if not irc_queue_running:
+        irc_queue_running = True
+        queuet = Thread(target=queue_thread)
+        queuet.daemon = True
+        queuet.start()
+        
+    
+    
 class connection_wrapper:
-    def __init__(self, connection):
+    def __init__(self, connection, flood_protection=True):
         self.irc=connection
+        self.flood_protection = flood_protection
     def send(self, raw):
-        print("[SEND) {}".format(raw))
-        self.irc.send("{}\r\n".format(raw).encode("UTF-8"))
+        if self.flood_protection==False:
+            print "[SEND) {}".format(raw)
+            self.irc.send("{}\r\n".format(raw).encode("UTF-8"))
+        else:
+            queue_add(self.irc, "{}\r\n".format(raw).encode("UTF-8"))
+        
     def msg(self, channel, message):
         self.send("PRIVMSG {} :{}".format(channel, message))
     def quit(self, message=""):
@@ -58,6 +91,7 @@ def run(config={}):
     channels = config.get("channels") or ["#EzzyBot"]
     analytics = config.get("analytics") or True
     quit_message = config.get("quit_message") or "EzzyBot: a simple python framework for IRC bots."
+    flood_protection = config.get("flood_protection") or True
 
     if analytics == True:
         channels.append("#EzzyBot")
@@ -94,9 +128,10 @@ def run(config={}):
                     print command
                     print commands.keys()
                     if command in commands.keys():
-                        output =commands[command]['function'](info=info, conn=connection_wrapper(irc))
+                        plugin_wrapper=connection_wrapper(irc, flood_protection)
+                        output =commands[command]['function'](info=info, conn=plugin_wrapper)
                         if output != None:
-                            sendmsg(channel,output)
+                            plugin_wrapper.msg(channel,output)
     except KeyboardInterrupt:
         send("QUIT :{}".format(quit_message))
         irc.close()
