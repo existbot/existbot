@@ -9,9 +9,9 @@ import traceback
 import json, thingdb
 from Queue import Queue
 from threading import Thread
-    
 
-class flood_protect_class:
+
+class flood_protect_class(object):
     def __init__(self):
         self.irc_queue = Queue()
         self.irc_queue_running = False
@@ -37,14 +37,14 @@ class flood_protect_class:
 
 flood_protect = flood_protect_class()
 
-class thing_database:
-    def open(self):
-        return thingdb.start("ezzybot.thing")
-    def save(self, database):
-        return thingdb.save(database, "ezzybot.thing")
+class thing_database(object):
+    def open(self, filename="ezzybot.thing"):
+        return thingdb.start(filename)
+    def save(self, database, filename="ezzybot.thing"):
+        return thingdb.save(database, filename)
         
 
-class connection_wrapper:
+class connection_wrapper(object):
     def __init__(self, connection, config, flood_protection=True):
         self.irc=connection
         self.flood_protection = flood_protection
@@ -120,6 +120,7 @@ class bot(object):
         self.send("NICK {}".format(self.nick))
         self.send("USER {} * * :{}".format(self.ident, self.realname))
         self.send("JOIN {}".format(",".join(self.channels)))
+        threads = {}
         try:
             while True:
                 self.msg = self.printrecv()
@@ -143,7 +144,6 @@ class bot(object):
                        
                         if self.command in self.commands.keys():
                             self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
-                            currenttime = str(time.time())
                             plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,))
                             plugin_thread.setDaemon(True)
                             plugin_thread.start()
