@@ -16,7 +16,7 @@ def recv():
     data = ""
     while not part.endswith("\r\n"):
         part = irc.recv(2048)
-        part = part.encode('utf8')
+        part = part.decode('utf8', 'ignore')
         data += part
     data = data.splitlines()
     return data
@@ -35,6 +35,17 @@ def assign(function, help_text, commandname, prefix="!"):
 def sendmsg(chan, msg):
     irc.send("PRIVMSG {0} :{1}\n".format(chan, msg))#.encode('utf-8'))
     
+class connection_wrapper:
+    def __init__(self, connection):
+        self.irc=connection
+    def send(self, raw):
+        print("[SEND) {}".format(raw))
+        self.irc.send("{}\r\n".format(raw).encode("UTF-8"))
+    def msg(self, channel, message):
+        self.send("PRIVMSG {} :{}".format(channel, message))
+    def quit(self, message=""):
+        self.send("QUIT :"+message)
+        
 
 def run(config={}):
     global irc
@@ -79,10 +90,11 @@ def run(config={}):
                     mask = ircmsg.split(" PRIVMSG ")[0]
                     message = ircmsg.split(" :")[1]
                     info = {"nick": nick, "channel": channel, "hostname": hostname, "ident": ident, "mask": mask, "message": message}
-                    
                     command = ircmsg.split(" :",1)[1].split(" ")[0]
+                    print command
+                    print commands.keys()
                     if command in commands.keys():
-                        output =commands[command]['function'](info=info)
+                        output =commands[command]['function'](info=info, conn=connection_wrapper(irc))
                         if output != None:
                             sendmsg(channel,output)
     except KeyboardInterrupt:
@@ -92,9 +104,9 @@ def run(config={}):
         traceback.print_exc()
 
 #Testing area
-#def hello(info=None):
-#    return json.dumps(info)
+#def hello(info=None, conn=None):
+#    conn.msg("#ezzybot", "Test!")
+#    return "test"
     
 #assign(function=hello, help_text="Returns 'Hello!'", commandname="hello")
-
 #run({"channels":[], "port": 6697, "ssl": True,"quit_message":"'I pretend I can touch BWBellairs[Bot] and the BWBellairs[Bot] would say something to me... '"})
