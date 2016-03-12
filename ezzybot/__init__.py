@@ -4,8 +4,9 @@
 import socket
 import ssl as securesl
 from time import sleep
+import time
 import traceback
-import json
+import json, thingdb
 from Queue import Queue
 from threading import Thread
     
@@ -36,11 +37,19 @@ class flood_protect_class:
 
 flood_protect = flood_protect_class()
 
+class thing_database:
+    def open(self):
+        return thingdb.start("ezzybot.thing")
+    def save(self, database):
+        return thingdb.save(database, "ezzybot.thing")
+        
+
 class connection_wrapper:
     def __init__(self, connection, config, flood_protection=True):
         self.irc=connection
         self.flood_protection = flood_protection
         self.config = config
+        self.db = thing_database()
     def send(self, raw):
         if self.flood_protection==False:
             print "[SEND) {}".format(raw)
@@ -79,6 +88,13 @@ class bot(object):
             self.data += self.part
         self.data = self.data.splitlines()
         return self.data
+    def run_plugin(self, function, plugin_wrapper, channel):
+        try:
+            self.output =function(info=self.info, conn=plugin_wrapper)
+            if self.output != None:
+                plugin_wrapper.msg(channel,self.output)
+        except:
+            traceback.print_exc()
     def run(self, config={}):
         self.host = config.get("host") or "irc.freenode.net"
         self.port = config.get("port") or 6667
@@ -99,12 +115,12 @@ class bot(object):
             self.irc = securesl.wrap_socket(self.sock)
         else:
             self.irc = self.sock
-        print "[SEND) Connect {}:{}".format(self.host, self.port)
+        print "[SEND] Connect {}:{}".format(self.host, self.port)
         self.irc.connect((self.host, self.port))
         self.send("NICK {}".format(self.nick))
         self.send("USER {} * * :{}".format(self.ident, self.realname))
         self.send("JOIN {}".format(",".join(self.channels)))
-        
+        threads = {}
         try:
             while True:
                 self.msg = self.printrecv()
@@ -122,14 +138,22 @@ class bot(object):
                         self.ident = self.ircmsg.split(" PRIVMSG ")[0].split("@")[0].split("!")[1]
                         self.mask = self.ircmsg.split(" PRIVMSG ")[0]
                         self.message = self.ircmsg.split(" :")[1]
-                        self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message}
                         self.command = self.ircmsg.split(" :",1)[1].split(" ")[0]
+                        self.args = self.message.replace(self.command, "")
+                        self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args}
                        
                         if self.command in self.commands.keys():
                             self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
-                            self.output =self.commands[self.command]['function'](info=self.info, conn=self.plugin_wrapper)
-                            if self.output != None:
-                                self.plugin_wrapper.msg(self.channel,self.output)
+                            currenttime = str(time.time())
+                            plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,))
+                            plugin_thread.setDaemon(True)
+                            plugin_thread.start()
+                            #try:
+                            #    #self.output =self.commands[self.command]['function'](info=self.info, conn=self.plugin_wrapper)
+                            #    #if self.output != None:
+                            #    #    self.plugin_wrapper.msg(self.channel,self.output)
+                            #except:
+                            #    traceback.print_exc()
         except KeyboardInterrupt:
             self.send("QUIT :{}".format(self.quit_message))
             self.irc.close()
