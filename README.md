@@ -7,11 +7,13 @@ Example of use:
 ```
 import ezzybot
 
+mybot = ezzybot.bot()
+
 def hello(info=None, conn=None):
     return "Hello!"
 
-ezzybot.assign(function=hello, help_text="Returns 'Hello!'", commandname="hello")
-ezzybot.run({"channels":["#ezzybot"], "host": "irc.freenode.net", "port": 6697, "ssl": True, "nick": "EzzyBot"})
+mybot.assign(function=hello, help_text="Returns 'Hello!'", commandname="hello")
+mybot.run({"channels":["#ezzybot"], "host": "irc.freenode.net", "port": 6697, "ssl": True, "nick": "EzzyBot"})
 ```
 
 
