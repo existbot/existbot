@@ -1,9 +1,10 @@
+#Todo in order of importance
+Sort out all functions into classes
+Allow commands to be triggered by event or regex
+Permissions
 Plugins
 Printing options:
     Print own messages
     Print joins/parts/bans
     Print raw or print like IRC client?
 Custom flood protection time
-Allow commands to be triggered by event or regex
-Sort out all functions into classes
-Permissions
