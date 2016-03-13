@@ -123,6 +123,7 @@ class bot(object):
         self.analytics = config.get("analytics") or True
         self.quit_message = config.get("quit_message") or "EzzyBot: a simple python framework for IRC bots."
         self.flood_protection = config.get("flood_protection") or True
+        self.permissions = config.get("permissions") or {}
     
         if self.analytics == True:
             self.channels.append("#EzzyBot")
@@ -160,7 +161,7 @@ class bot(object):
                         self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args}
                        
                         if self.command in self.commands.keys():
-                            permissions_wrapper = permissions_class(config['permissions'])
+                            permissions_wrapper = permissions_class(permissions)
                             if permissions_wrapper.check(self.commands[self.command]['perms'], self.mask) or self.commands[self.command]['perms'] == "all":
                                 self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
                                 plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,))
