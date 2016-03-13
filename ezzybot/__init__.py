@@ -137,6 +137,7 @@ class bot(object):
         self.irc.connect((self.host, self.port))
         self.send("NICK {}".format(self.nick))
         self.send("USER {} * * :{}".format(self.ident, self.realname))
+        sleep(5)
         self.send("JOIN {}".format(",".join(self.channels)))
         threads = {}
         try:
