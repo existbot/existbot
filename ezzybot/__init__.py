@@ -122,7 +122,7 @@ class bot(object):
         self.channels = config.get("channels") or ["#EzzyBot"]
         self.analytics = config.get("analytics") or True
         self.quit_message = config.get("quit_message") or "EzzyBot: a simple python framework for IRC bots."
-        self.flood_protection = config.get("flood_protection") or True
+        self.flood_protection = config.get("flood_protection") or False
         self.permissions = config.get("permissions") or {}
     
         if self.analytics == True:
