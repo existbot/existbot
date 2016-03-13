@@ -125,9 +125,6 @@ class bot(object):
         self.flood_protection = config.get("flood_protection") or False
         self.permissions = config.get("permissions") or {}
     
-        if self.analytics == True:
-            self.channels.append("#EzzyBot")
-    
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.ssl == True:
             self.irc = securesl.wrap_socket(self.sock)
