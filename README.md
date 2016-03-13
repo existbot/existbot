@@ -21,7 +21,7 @@ mybot.assign(function=hello, help_text="Returns 'Hello!'", commandname="hello")
 mybot.run({"channels":["#ezzybot"], "host": "irc.freenode.net", "port": 6697, "ssl": True, "nick": "EzzyBot"})
 ```
 
-
+#[Wiki](https://github.com/ezzybot/ezzybot/wiki)
 
 Devs are: zz, Bowserinator, BWBellairs
 
