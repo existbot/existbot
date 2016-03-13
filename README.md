@@ -2,6 +2,11 @@
 
 EzzyBot is a IRC bot framework built in python.
 
+Installation
+```
+pip install ezzybot
+```
+
 Example of use:
 
 ```
