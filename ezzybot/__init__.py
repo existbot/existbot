@@ -105,9 +105,9 @@ class bot(object):
             self.data += self.part
         self.data = self.data.splitlines()
         return self.data
-    def run_plugin(self, function, plugin_wrapper, channel):
+    def run_plugin(self, function, plugin_wrapper, channel, info):
         try:
-            self.output =function(info=self.info, conn=plugin_wrapper)
+            self.output =function(info=info, conn=plugin_wrapper)
             if self.output != None:
                 plugin_wrapper.msg(channel,self.output)
         except:
@@ -162,7 +162,7 @@ class bot(object):
                             permissions_wrapper = permissions_class(self.permissions)
                             if permissions_wrapper.check(self.commands[self.command]['perms'], self.mask) or self.commands[self.command]['perms'] == "all":
                                 self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
-                                plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,))
+                                plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,info,))
                                 plugin_thread.setDaemon(True)
                                 plugin_thread.start()
                             #try:
