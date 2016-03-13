@@ -7,6 +7,12 @@ Installation
 pip install ezzybot
 ```
 
+Or, install the development version
+
+```
+pip install git+https://github.com/ezzybot/ezzybot
+```
+
 Example of use:
 
 ```
