@@ -37,6 +37,9 @@ class flood_protect_class(object):
 
 flood_protect = flood_protect_class()
 
+#class permissions(object):
+#    TODO
+
 class thing_database(object):
     def open(self, filename="ezzybot.thing"):
         return thingdb.start(filename)
@@ -58,17 +61,21 @@ class connection_wrapper(object):
             flood_protect.queue_add(self.irc, "{}\r\n".format(raw))#.encode("UTF-8"))
     def msg(self, channel, message):
         self.send("PRIVMSG {} :{}".format(channel, message))
+    def notice(self, user, message):
+        self.send("NOTICE {} :{}".format(user, message))
     def quit(self, message=""):
         self.send("QUIT :"+message)
 
 
 class bot(object):
+    def help(self, conn=None, info=None):
+        for fullcommand, command in self.commands.iteritems():
+            conn.notice(info['nick'], " {} : {}".format(fullcommand, command['help']))
     def __init__(self):
         self.commands = {}
-
+        self.commands["!help"] = {"function": self.help, "help": "This command.", "prefix": "!", "commandname": "help"}
     def assign(self,function, help_text, commandname, prefix="!"):
         self.commands[prefix+commandname] = {"function": function, "help": help_text, "prefix": prefix, "commandname": commandname, "fullcommand": prefix+commandname}
-
     def send(self, data):
         print("[SEND] {}".format(data))
         self.irc.send("{}\r\n".format(data))
