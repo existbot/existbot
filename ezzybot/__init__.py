@@ -9,6 +9,7 @@ import traceback
 import json, thingdb
 from Queue import Queue
 from threading import Thread
+from fnmatch import fnmatch
 
 
 class flood_protect_class(object):
@@ -37,8 +38,17 @@ class flood_protect_class(object):
 
 flood_protect = flood_protect_class()
 
-#class permissions(object):
-#    TODO
+class permissions_class(object):
+    def __init__(self, permissions):
+        self.permissions = permissions # {"admin": "zz!*@*"}
+    def check(self, perms, mask): # perms = # ["admin"]
+        if perms == "all":
+            return True
+        for required_perm in perms:
+            for perm_mask in self.permissions[required_perm]:
+                if fnmatch(mask, perm_mask):
+                    return True
+        return False
 
 class thing_database(object):
     def open(self, filename="ezzybot.thing"):
@@ -73,9 +83,9 @@ class bot(object):
             conn.notice(info['nick'], " {} : {}".format(fullcommand, command['help']))
     def __init__(self):
         self.commands = {}
-        self.commands["!help"] = {"function": self.help, "help": "This command.", "prefix": "!", "commandname": "help"}
-    def assign(self,function, help_text, commandname, prefix="!"):
-        self.commands[prefix+commandname] = {"function": function, "help": help_text, "prefix": prefix, "commandname": commandname, "fullcommand": prefix+commandname}
+        self.commands["!help"] = {"function": self.help, "help": "This command.", "prefix": "!", "commandname": "help", "perms": "all"}
+    def assign(self,function, help_text, commandname, prefix="!", perms="all"):
+        self.commands[prefix+commandname] = {"function": function, "help": help_text, "prefix": prefix, "commandname": commandname, "fullcommand": prefix+commandname, "perms": perms}
     def send(self, data):
         print("[SEND] {}".format(data))
         self.irc.send("{}\r\n".format(data))
@@ -150,10 +160,12 @@ class bot(object):
                         self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args}
                        
                         if self.command in self.commands.keys():
-                            self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
-                            plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,))
-                            plugin_thread.setDaemon(True)
-                            plugin_thread.start()
+                            permissions_wrapper = permissions_class(config['permissions'])
+                            if permissions_wrapper.check(self.commands[self.command]['perms'], self.mask) or self.commands[self.command]['perms'] == "all":
+                                self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
+                                plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,))
+                                plugin_thread.setDaemon(True)
+                                plugin_thread.start()
                             #try:
                             #    #self.output =self.commands[self.command]['function'](info=self.info, conn=self.plugin_wrapper)
                             #    #if self.output != None:
