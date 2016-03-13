@@ -4,13 +4,13 @@ from setuptools import setup, find_packages
 
 
 setup(name='ezzybot',
-      version='0.0.1',
+      version='1.0',
       description="Python IRC framework",
-      url='',
+      url='https://ezzybot.zzirc.xyz',
       author='EzzyBot team',
       author_email='me@lukej.me',
       license='GNU',
       packages=find_packages(),
-      install_requires=[],
+      install_requires=['thingdb'],
       include_package_data=True,
       zip_safe=False)
