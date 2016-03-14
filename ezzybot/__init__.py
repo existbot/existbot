@@ -12,7 +12,10 @@ from threading import Thread
 from fnmatch import fnmatch
 import socks
 from base64 import b64encode
+import colours
 
+class systemExit(Exception):
+    pass
 
 class flood_protect_class(object):
     def __init__(self):
@@ -81,8 +84,15 @@ class connection_wrapper(object):
 
 class bot(object):
     def help(self, conn=None, info=None):
+        #self.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
         for fullcommand, command in self.commands.iteritems():
-            conn.notice(info['nick'], " {} : {}".format(fullcommand, command['help']))
+            if command["commandname"] == info["args"].lstrip():
+                conn.notice(info['nick'], " {} : {}".format(fullcommand, command['help']))
+                self.sendmsg("#ezzybot :{}".format(command['help']))
+                
+    def list(self, info=None, conn=None):
+        return " ".join([self.commands[command]["commandname"] for command in self.commands.keys()])
+        
     def bot_quit(self, conn, info):
         conn.quit()
     def __init__(self):
@@ -90,6 +100,8 @@ class bot(object):
         #---Built-in---#
         self.commands["!help"] = {"function": self.help, "help": "This command.", "prefix": "!", "commandname": "help", "perms": "all"}
         self.commands["!quit"] = {"function": self.bot_quit, "help": "Forces the bot :to quit", "prefix":"!", "commandname": "quit", "perms":["admin"]}
+        self.commands["!list"] = {"function": self.list, "help":"list : lists all commands", "prefix": "!", "commandname": "list", "perms": "all"}
+    
     def assign(self,function, help_text, commandname, prefix="!", perms="all"):
         self.commands[prefix+commandname] = {"function": function, "help": help_text, "prefix": prefix, "commandname": commandname, "fullcommand": prefix+commandname, "perms": perms}
     def send(self, data):
@@ -115,12 +127,16 @@ class bot(object):
         try:
             self.output =function(info=info, conn=plugin_wrapper)
             if self.output != None:
-                plugin_wrapper.msg(channel,self.output)
+                if channel.startswith("#"):
+                    plugin_wrapper.msg(channel,"[{}] {}".format(info['nick'], str(self.output)))
+                else:
+                    plugin_wrapper.msg(channel,"| "+str(self.output))
+                #plugin_wrapper.msg(channel,"| "+str(self.output))
         except:
             traceback.print_exc()
     def confirmsasl(self):
         while True:
-            received = " ".join(self.printrecv())
+            received = " ".join(self.printrecv()) 
             auth_msgs = [":SASL authentication successful", ":SASL authentication failed", ":SASL authentication aborted"]
             if auth_msgs[0] in received: 
                 return True
@@ -148,6 +164,9 @@ class bot(object):
         self.proxy_host = config.get("proxy_host") or ""
         self.proxy_port = config.get("proxy_port") or 1080
         self.proxy_type = {"SOCKS5": socks.SOCKS5, "SOCKS4": socks.SOCKS4}[self.proxy_type]
+        
+        self.colours = colours.colours()
+        self.colors = colours.colours()
         if self.proxy == True:
             self.sock = socks.socksocket()
             self.sock.set_proxy(socks.SOCKS5, self.proxy_host, self.proxy_port)
@@ -177,7 +196,7 @@ class bot(object):
             else:
                 print("[ERROR] SASL aborted. exiting.")
                 self.send("QUIT :[ERROR] SASL aborted".encode("UTF-8"))
-                raise systemExit
+                raise systemExit()
 
         else:
             self.send("NICK {}".format(self.nick))
