@@ -10,6 +10,8 @@ import json, thingdb
 from Queue import Queue
 from threading import Thread
 from fnmatch import fnmatch
+import socks
+from base64 import b64encode
 
 
 class flood_protect_class(object):
@@ -81,9 +83,13 @@ class bot(object):
     def help(self, conn=None, info=None):
         for fullcommand, command in self.commands.iteritems():
             conn.notice(info['nick'], " {} : {}".format(fullcommand, command['help']))
+    def bot_quit(self, conn, info):
+        conn.quit()
     def __init__(self):
         self.commands = {}
+        #---Built-in---#
         self.commands["!help"] = {"function": self.help, "help": "This command.", "prefix": "!", "commandname": "help", "perms": "all"}
+        self.commands["!quit"] = {"function": self.bot_quit, "help": "Forces the bot :to quit", "prefix":"!", "commandname": "quit", "perms":["admin"]}
     def assign(self,function, help_text, commandname, prefix="!", perms="all"):
         self.commands[prefix+commandname] = {"function": function, "help": help_text, "prefix": prefix, "commandname": commandname, "fullcommand": prefix+commandname, "perms": perms}
     def send(self, data):
@@ -112,10 +118,23 @@ class bot(object):
                 plugin_wrapper.msg(channel,self.output)
         except:
             traceback.print_exc()
+    def confirmsasl(self):
+        while True:
+            received = " ".join(self.printrecv())
+            auth_msgs = [":SASL authentication successful", ":SASL authentication failed", ":SASL authentication aborted"]
+            if auth_msgs[0] in received: 
+                return True
+            elif auth_msgs[1] in received or auth_msgs[2] in received:
+                return False
+            
     def run(self, config={}):
         self.host = config.get("host") or "irc.freenode.net"
         self.port = config.get("port") or 6667
-        self.ssl = config.get("ssl") or False
+        self.ssl = config.get("SSL") or False
+        self.sasl = config.get("SASL") or False
+        self.do_auth = config.get("do_auth") or False
+        self.auth_pass = config.get("auth_pass") or None
+        self.auth_user = config.get("auth_user") or None
         self.nick = config.get("nick") or "EzzyBot"
         self.ident = config.get("indent") or "EzzyBot"
         self.realname = config.get("realname") or "EzzyBot: a simple python framework for IRC bots."
@@ -124,19 +143,50 @@ class bot(object):
         self.quit_message = config.get("quit_message") or "EzzyBot: a simple python framework for IRC bots."
         self.flood_protection = config.get("flood_protection") or False
         self.permissions = config.get("permissions") or {}
-    
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if self.ssl == True:
+        self.proxy = config.get("proxy") or False
+        self.proxy_type = config.get("proxy_type") or "SOCKS5"
+        self.proxy_host = config.get("proxy_host") or ""
+        self.proxy_port = config.get("proxy_port") or 1080
+        self.proxy_type = {"SOCKS5": socks.SOCKS5, "SOCKS4": socks.SOCKS4}[self.proxy_type]
+        if self.proxy == True:
+            self.sock = socks.socksocket()
+            self.sock.set_proxy(socks.SOCKS5, self.proxy_host, self.proxy_port)
+        else:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if self.ssl == True and self.proxy == False:
             self.irc = securesl.wrap_socket(self.sock)
         else:
             self.irc = self.sock
         print "[SEND] Connect {}:{}".format(self.host, self.port)
         self.irc.connect((self.host, self.port))
-        self.send("NICK {}".format(self.nick))
-        self.send("USER {} * * :{}".format(self.ident, self.realname))
+        self.printrecv()
+        if self.sasl:
+            saslstring = b64encode("{0}\x00{0}\x00{1}".format(
+                            self.auth_user, self.auth_pass).encode("UTF-8"))
+            saslstring = saslstring.decode("UTF-8")
+            self.send("CAP REQ :sasl".encode("UTF-8"))
+            self.send("AUTHENTICATE PLAIN".encode("UTF-8"))
+            self.send("AUTHENTICATE {0}".format(saslstring).encode(
+                    "UTF-8"))
+            authed = self.confirmsasl()
+            #authed = True
+            if authed:
+                self.send("CAP END".encode("UTF-8"))
+                self.send("NICK {}".format(self.nick))
+                self.send("USER {} * * :{}".format(self.ident, self.realname))
+            else:
+                print("[ERROR] SASL aborted. exiting.")
+                self.send("QUIT :[ERROR] SASL aborted".encode("UTF-8"))
+                raise systemExit
+
+        else:
+            self.send("NICK {}".format(self.nick))
+            self.send("USER {} * * :{}".format(self.ident, self.realname))
+            if self.do_auth:
+                self.irc.send("PRIVMSG nickserv :identify {0} {1}\r\n".format(
+                        self.auth_user, self.auth_pass).encode("UTF-8"))
         sleep(5)
         self.send("JOIN {}".format(",".join(self.channels)))
-        threads = {}
         try:
             while True:
                 self.msg = self.printrecv()
@@ -162,15 +212,9 @@ class bot(object):
                             permissions_wrapper = permissions_class(self.permissions)
                             if permissions_wrapper.check(self.commands[self.command]['perms'], self.mask) or self.commands[self.command]['perms'] == "all":
                                 self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
-                                plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,info,))
+                                plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,self.info,))
                                 plugin_thread.setDaemon(True)
                                 plugin_thread.start()
-                            #try:
-                            #    #self.output =self.commands[self.command]['function'](info=self.info, conn=self.plugin_wrapper)
-                            #    #if self.output != None:
-                            #    #    self.plugin_wrapper.msg(self.channel,self.output)
-                            #except:
-                            #    traceback.print_exc()
         except KeyboardInterrupt:
             self.send("QUIT :{}".format(self.quit_message))
             self.irc.close()
