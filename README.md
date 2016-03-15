@@ -1,4 +1,4 @@
-# ezzybot [![Codacy Badge](https://api.codacy.com/project/badge/grade/6f9c84a479754bbb945d6ac4cf4cdbb1)](https://www.codacy.com/app/me_64/ezzybot) [![PyPI](https://img.shields.io/pypi/dm/ezzybot.svg)](https://pypi.python.org/pypi/ezzybot)
+# ezzybot [![Codacy Badge](https://api.codacy.com/project/badge/grade/6f9c84a479754bbb945d6ac4cf4cdbb1)](https://www.codacy.com/app/me_64/ezzybot) [![PyPI](https://img.shields.io/pypi/dm/ezzybot.svg)](https://pypi.python.org/pypi/ezzybot) [![Code Issues](https://www.quantifiedcode.com/api/v1/project/736ed122f2cd4abea04a58bb7665e73b/badge.svg)](https://www.quantifiedcode.com/app/project/736ed122f2cd4abea04a58bb7665e73b) [![Code Health](https://landscape.io/github/ezzybot/ezzybot/master/landscape.svg?style=flat)](https://landscape.io/github/ezzybot/ezzybot/master)
 
 EzzyBot is a IRC bot framework built in python.
 
