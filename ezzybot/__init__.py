@@ -1,8 +1,9 @@
 #EzzyBot 2016
-#Created by zz & Bowserinator & BWBellairs(freenode)
+#Created by zz & Bowserinator & BWBellairs (freenode @ #ezzybot)
 
 import socket
 import ssl as securesl
+import logging
 from time import sleep
 import time
 import traceback
@@ -13,6 +14,7 @@ from fnmatch import fnmatch
 import socks
 from base64 import b64encode
 import colours
+import os
 
 class systemExit(Exception):
     pass
@@ -30,7 +32,7 @@ class flood_protect_class(object):
                 self.irc_queue_running = False
                 break
             connection.send(raw)
-            print "[QUEUE-SEND) "+raw
+            log.send(raw)
             sleep(0.5)
 
     def queue_add(self, connection, raw):
@@ -70,14 +72,14 @@ class connection_wrapper(object):
         self.db = thing_database()
     def send(self, raw):
         if self.flood_protection==False:
-            print "[SEND) {0}".format(raw)
-            self.irc.send("{0}\r\n".format(raw))#.encode("UTF-8"))
+            log.send(raw)
+            self.irc.send("{}\r\n".format(raw))#.encode("UTF-8"))
         else:
-            flood_protect.queue_add(self.irc, "{0}\r\n".format(raw))#.encode("UTF-8"))
+            flood_protect.queue_add(self.irc, "{}\r\n".format(raw))#.encode("UTF-8"))
     def msg(self, channel, message):
-        self.send("PRIVMSG {0} :{1}".format(channel, message))
+        self.send("PRIVMSG {} :{}".format(channel, message))
     def notice(self, user, message):
-        self.send("NOTICE {0} :{1}".format(user, message))
+        self.send("NOTICE {} :{}".format(user, message))
     def quit(self, message=""):
         self.send("QUIT :"+message)
 
@@ -87,8 +89,8 @@ class bot(object):
         #self.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
         for fullcommand, command in self.commands.iteritems():
             if command["commandname"] == info["args"].lstrip():
-                conn.notice(info['nick'], " {0} : {1}".format(fullcommand, command['help']))
-                self.sendmsg("#ezzybot :{0}".format(command['help']))
+                conn.notice(info['nick'], " {} : {}".format(fullcommand, command['help']))
+                conn.msg(info['channel'], command['help'])
                 
     def list(self, info=None, conn=None):
         return " ".join([self.commands[command]["commandname"] for command in self.commands.keys()])
@@ -105,14 +107,14 @@ class bot(object):
     def assign(self,function, help_text, commandname, prefix="!", perms="all"):
         self.commands[prefix+commandname] = {"function": function, "help": help_text, "prefix": prefix, "commandname": commandname, "fullcommand": prefix+commandname, "perms": perms}
     def send(self, data):
-        print("[SEND] {0}".format(data))
-        self.irc.send("{0}\r\n".format(data))
+        log.send(data)
+        self.irc.send("{}\r\n".format(data))
     def sendmsg(self, chan, msg):
         self.irc.send("PRIVMSG {0} :{1}\n".format(chan, msg))#.encode('utf-8'))
     def printrecv(self):
         self.ircmsg = self.recv()
         for line in self.ircmsg:
-            print("[RECV) {0}".format(line))
+            log.receive(line)
         return self.ircmsg
     def recv(self):
         self.part = ""
@@ -128,12 +130,13 @@ class bot(object):
             self.output =function(info=info, conn=plugin_wrapper)
             if self.output != None:
                 if channel.startswith("#"):
-                    plugin_wrapper.msg(channel,"[{0}] {1}".format(info['nick'], str(self.output)))
+                    plugin_wrapper.msg(channel,"[{}] {}".format(info['nick'], str(self.output)))
                 else:
-                    plugin_wrapper.msg(channel,"| "+str(self.output))
+                    plugin_wrapper.msg(info['nick'],"| "+str(self.output))
                 #plugin_wrapper.msg(channel,"| "+str(self.output))
-        except:
-            traceback.print_exc()
+        except Exception as e:
+            for line in str(e).split("\n"):
+                self.log.error(line)
     def confirmsasl(self):
         while True:
             received = " ".join(self.printrecv()) 
@@ -144,6 +147,7 @@ class bot(object):
                 return False
             
     def run(self, config={}):
+        global log
         self.host = config.get("host") or "irc.freenode.net"
         self.port = config.get("port") or 6667
         self.ssl = config.get("SSL") or False
@@ -164,6 +168,7 @@ class bot(object):
         self.proxy_host = config.get("proxy_host") or ""
         self.proxy_port = config.get("proxy_port") or 1080
         self.proxy_type = {"SOCKS5": socks.SOCKS5, "SOCKS4": socks.SOCKS4}[self.proxy_type]
+        self.log_channel = config.get("log_channel") or "#ezzybot"
         
         self.colours = colours.colours()
         self.colors = colours.colours()
@@ -176,7 +181,9 @@ class bot(object):
             self.irc = securesl.wrap_socket(self.sock)
         else:
             self.irc = self.sock
-        print "[SEND] Connect {0}:{1}".format(self.host, self.port)
+        log = logging.Logging(self.log_channel, connection_wrapper(self.irc, config, self.flood_protection))
+        self.log = log
+        #log.debug("Connecting to {} at port {}".format(self.host, self.port))
         self.irc.connect((self.host, self.port))
         self.printrecv()
         if self.sasl:
@@ -191,21 +198,21 @@ class bot(object):
             #authed = True
             if authed:
                 self.send("CAP END".encode("UTF-8"))
-                self.send("NICK {0}".format(self.nick))
-                self.send("USER {0} * * :{1}".format(self.ident, self.realname))
+                self.send("NICK {}".format(self.nick))
+                self.send("USER {} * * :{}".format(self.ident, self.realname))
             else:
-                print("[ERROR] SASL aborted. exiting.")
+                log.error("[ERROR] SASL aborted. exiting.")
                 self.send("QUIT :[ERROR] SASL aborted".encode("UTF-8"))
                 raise systemExit()
 
         else:
-            self.send("NICK {0}".format(self.nick))
-            self.send("USER {0} * * :{1}".format(self.ident, self.realname))
+            self.send("NICK {}".format(self.nick))
+            self.send("USER {} * * :{}".format(self.ident, self.realname))
             if self.do_auth:
                 self.irc.send("PRIVMSG nickserv :identify {0} {1}\r\n".format(
                         self.auth_user, self.auth_pass).encode("UTF-8"))
         sleep(5)
-        self.send("JOIN {0}".format(",".join(self.channels)))
+        self.send("JOIN {}".format(",".join(self.channels)))
         try:
             while True:
                 self.msg = self.printrecv()
@@ -214,7 +221,7 @@ class bot(object):
                     self.t = irc_msg.split()
                     #:zz!Zc-zz@mixtape.zzirc.xyz PRIVMSG #ezzybot :test
                     if self.t[0] == "PING":
-                        self.send("PONG {0}".format(" ".join(self.t[1:])))
+                        self.send("PONG {}".format(" ".join(self.t[1:])))
                     elif self.t[1] == "PRIVMSG":
                         self.ircmsg = self.irc_msg
                         self.nick = self.ircmsg.split("!")[0]
@@ -235,7 +242,7 @@ class bot(object):
                                 plugin_thread.setDaemon(True)
                                 plugin_thread.start()
         except KeyboardInterrupt:
-            self.send("QUIT :{0}".format(self.quit_message))
+            self.send("QUIT :{}".format(self.quit_message)) # send automatically does log.send
             self.irc.close()
         except:
             traceback.print_exc()
