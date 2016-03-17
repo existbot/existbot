@@ -4,3 +4,5 @@ python:
 install:
   - pip install .
 script: python travis_test.py
+notifications:
+  irc: "chat.freenode.net#ezzybot"
