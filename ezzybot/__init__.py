@@ -135,6 +135,8 @@ class bot(object):
                     plugin_wrapper.msg(info['nick'],"| "+str(self.output))
                 #plugin_wrapper.msg(channel,"| "+str(self.output))
         except Exception as e:
+            self.log.error(self.colours.VIOLET+"Caused by {}, using command '{}' in {}".format(info['mask'], info['message'], info['channel']))
+            plugin_wrapper.msg(channel, self.colours.RED+"Error! See {} for more info.".format(self.log_channel))
             for line in str(e).split("\n"):
                 self.log.error(line)
     def confirmsasl(self):
