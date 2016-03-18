@@ -238,7 +238,7 @@ class bot(object):
                     #:zz!Zc-zz@mixtape.zzirc.xyz PRIVMSG #ezzybot :test
                     if self.t[0] == "PING":
                         self.send("PONG {}".format(" ".join(self.t[1:])))
-                    if self.t[1] == "PRIVMSG":
+                    if self.t[1] == "PRIVMSG" and self.commands != {}:
                         self.ircmsg = self.irc_msg
                         self.nick = self.ircmsg.split("!")[0]
                         self.channel = self.ircmsg.split(' PRIVMSG ')[-1].split(' :')[0]
@@ -257,27 +257,29 @@ class bot(object):
                                 plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,self.info,))
                                 plugin_thread.setDaemon(True)
                                 plugin_thread.start()
-                    for trigger in self.triggers:
-                        if trigger['trigger'] == "*":
-                            self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
-                            self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
-                            trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
-                            trigger_thread.setDaemon(True)
-                            trigger_thread.start()
-                        if trigger['trigger'] == self.t[1]:
-                            self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
-                            self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
-                            trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
-                            trigger_thread.setDaemon(True)
-                            trigger_thread.start()
-                    for search in self.regex:
-                        searched = re.search(search['regex'], irc_msg)
-                        if searched != None:
-                            self.info = {"raw": irc_msg, "regex": search['regex'], "split": irc_msg.split(" "), "result": searched}
-                            self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
-                            trigger_thread= Thread(target=self.run_trigger, args=(search['function'], self.plugin_wrapper,self.info,))
-                            trigger_thread.setDaemon(True)
-                            trigger_thread.start()
+                    if self.triggers != []:
+                        for trigger in self.triggers:
+                            if trigger['trigger'] == "*":
+                                self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
+                                self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
+                                trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
+                                trigger_thread.setDaemon(True)
+                                trigger_thread.start()
+                            if trigger['trigger'] == self.t[1]:
+                                self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
+                                self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
+                                trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
+                                trigger_thread.setDaemon(True)
+                                trigger_thread.start()
+                    if self.regex != []:
+                        for search in self.regex:
+                            searched = re.search(search['regex'], irc_msg)
+                            if searched != None:
+                                self.info = {"raw": irc_msg, "regex": search['regex'], "split": irc_msg.split(" "), "result": searched}
+                                self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
+                                trigger_thread= Thread(target=self.run_trigger, args=(search['function'], self.plugin_wrapper,self.info,))
+                                trigger_thread.setDaemon(True)
+                                trigger_thread.start()
                         
         except KeyboardInterrupt:
             self.send("QUIT :{}".format(self.quit_message)) # send automatically does log.send
