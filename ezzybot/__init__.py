@@ -1,5 +1,5 @@
 #EzzyBot 2016
-#Created by zz & Bowserinator & BWBellairs (freenode @ #ezzybot)
+#Created by zz & Bowserinator & BWBellairs & IndigoTiger (freenode @ #ezzybot)
 
 import socket
 import ssl as securesl
