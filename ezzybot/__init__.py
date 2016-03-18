@@ -1,5 +1,5 @@
 #EzzyBot 2016
-#Created by zz & Bowserinator & BWBellairs & IndigoTiger (freenode @ #ezzybot)
+#Created by zz & Bowserinator & BWBellairs (freenode @ #ezzybot)
 
 import socket
 import ssl as securesl
@@ -99,6 +99,7 @@ class bot(object):
         conn.quit()
     def __init__(self):
         self.commands = {}
+        self.triggers = []
         #---Built-in---#
         self.commands["!help"] = {"function": self.help, "help": "This command.", "prefix": "!", "commandname": "help", "perms": "all"}
         self.commands["!quit"] = {"function": self.bot_quit, "help": "Forces the bot :to quit", "prefix":"!", "commandname": "quit", "perms":["admin"]}
@@ -106,6 +107,8 @@ class bot(object):
     
     def assign(self,function, help_text, commandname, prefix="!", perms="all"):
         self.commands[prefix+commandname] = {"function": function, "help": help_text, "prefix": prefix, "commandname": commandname, "fullcommand": prefix+commandname, "perms": perms}
+    def trigger(self, function, trigger):
+        self.triggers.append({"trigger": trigger, "function": function})
     def send(self, data):
         log.send(data)
         self.irc.send("{}\r\n".format(data))
@@ -137,6 +140,13 @@ class bot(object):
         except Exception as e:
             self.log.error(self.colours.VIOLET+"Caused by {}, using command '{}' in {}".format(info['mask'], info['message'], info['channel']))
             plugin_wrapper.msg(channel, self.colours.RED+"Error! See {} for more info.".format(self.log_channel))
+            for line in str(e).split("\n"):
+                self.log.error(line)
+    def run_trigger(self, function, plugin_wrapper, info):
+        try:
+            function(info=info, conn=plugin_wrapper)
+        except Exception as e:
+            self.log.error(self.colours.VIOLET+"Caused by {}, using command '{}' in {}".format(info['mask'], info['message'], info['channel']))
             for line in str(e).split("\n"):
                 self.log.error(line)
     def confirmsasl(self):
@@ -224,7 +234,7 @@ class bot(object):
                     #:zz!Zc-zz@mixtape.zzirc.xyz PRIVMSG #ezzybot :test
                     if self.t[0] == "PING":
                         self.send("PONG {}".format(" ".join(self.t[1:])))
-                    elif self.t[1] == "PRIVMSG":
+                    if self.t[1] == "PRIVMSG":
                         self.ircmsg = self.irc_msg
                         self.nick = self.ircmsg.split("!")[0]
                         self.channel = self.ircmsg.split(' PRIVMSG ')[-1].split(' :')[0]
@@ -243,6 +253,20 @@ class bot(object):
                                 plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,self.info,))
                                 plugin_thread.setDaemon(True)
                                 plugin_thread.start()
+                    for trigger in self.triggers:
+                        if trigger['trigger'] == "*":
+                            self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
+                            self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
+                            trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
+                            trigger_thread.setDaemon(True)
+                            trigger_thread.start()
+                        if trigger['trigger'] == self.t[1]:
+                            self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
+                            self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
+                            trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
+                            trigger_thread.setDaemon(True)
+                            trigger_thread.start()
+                        
         except KeyboardInterrupt:
             self.send("QUIT :{}".format(self.quit_message)) # send automatically does log.send
             self.irc.close()
