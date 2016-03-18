@@ -15,6 +15,7 @@ import socks
 from base64 import b64encode
 import colours
 import os
+import re
 
 class systemExit(Exception):
     pass
@@ -100,6 +101,7 @@ class bot(object):
     def __init__(self):
         self.commands = {}
         self.triggers = []
+        self.regex = []
         #---Built-in---#
         self.commands["!help"] = {"function": self.help, "help": "This command.", "prefix": "!", "commandname": "help", "perms": "all"}
         self.commands["!quit"] = {"function": self.bot_quit, "help": "Forces the bot :to quit", "prefix":"!", "commandname": "quit", "perms":["admin"]}
@@ -109,6 +111,8 @@ class bot(object):
         self.commands[prefix+commandname] = {"function": function, "help": help_text, "prefix": prefix, "commandname": commandname, "fullcommand": prefix+commandname, "perms": perms}
     def trigger(self, function, trigger):
         self.triggers.append({"trigger": trigger, "function": function})
+    def trigger_regex(self, function, search_for):
+        self.regex.append({"regex": search_for, "function": function})
     def send(self, data):
         log.send(data)
         self.irc.send("{}\r\n".format(data))
@@ -264,6 +268,14 @@ class bot(object):
                             self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
                             self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
                             trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
+                            trigger_thread.setDaemon(True)
+                            trigger_thread.start()
+                    for search in self.regex:
+                        searched = re.search(search['regex'], irc_msg)
+                        if searched != None:
+                            self.info = {"raw": irc_msg, "regex": search['regex'], "split": irc_msg.split(" "), "result": searched}
+                            self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
+                            trigger_thread= Thread(target=self.run_trigger, args=(search['function'], self.plugin_wrapper,self.info,))
                             trigger_thread.setDaemon(True)
                             trigger_thread.start()
                         
