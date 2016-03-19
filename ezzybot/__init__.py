@@ -166,6 +166,7 @@ class bot(object):
         global log
         self.host = config.get("host") or "irc.freenode.net"
         self.port = config.get("port") or 6667
+        self.ipv6 = config.get("IPv6") or False
         self.ssl = config.get("SSL") or False
         self.sasl = config.get("SASL") or False
         self.do_auth = config.get("do_auth") or False
@@ -191,6 +192,8 @@ class bot(object):
         if self.proxy == True:
             self.sock = socks.socksocket()
             self.sock.set_proxy(socks.SOCKS5, self.proxy_host, self.proxy_port)
+        elif self.ipv6 == True:
+            self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         else:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.ssl == True and self.proxy == False:
