@@ -77,7 +77,7 @@ class bot(object):
                 #plugin_wrapper.msg(channel,"| "+str(self.output))
         except Exception as e:
             self.log.error(self.colours.VIOLET+"Caused by {}, using command '{}' in {}".format(info['mask'], info['message'], info['channel']))
-            plugin_wrapper.msg(channel, self.colours.RED+"Error! See {} for more info.".format(self.log_channel))
+            plugin_wrapper.msg(channel, self.colours.RED+"Error! See {} for more info.".format(self.config_log_channel))
             for line in str(e).split("\n"):
                 self.log.error(line)
     def run_trigger(self, function, plugin_wrapper, info):
@@ -162,7 +162,7 @@ class bot(object):
         else:
             self.send("NICK {}".format(self.config_nick))
             self.send("USER {} * * :{}".format(self.config_ident, self.config_realname))
-            if self.config_do_auth:
+            if self.do_auth:
                 self.irc.send("PRIVMSG nickserv :identify {0} {1}\r\n".format(
                         self.auth_user, self.auth_pass).encode("UTF-8"))
         sleep(5)
