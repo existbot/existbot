@@ -236,7 +236,7 @@ class bot(object):
             while True:
                 self.msg = self.printrecv()
                 for irc_msg in self.msg:
-                    self.irc_msg = irc_msg.strip(":")
+                    self.irc_msg = irc_msg.replace(":", "", 1)
                     self.t = irc_msg.split()
                     #:zz!Zc-zz@mixtape.zzirc.xyz PRIVMSG #ezzybot :test
                     if self.t[0] == "PING":
