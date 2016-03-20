@@ -164,39 +164,39 @@ class bot(object):
             
     def run(self, config={}):
         global log
-        self.host = config.get("host") or "irc.freenode.net"
-        self.port = config.get("port") or 6667
-        self.ipv6 = config.get("IPv6") or False
-        self.ssl = config.get("SSL") or False
-        self.sasl = config.get("SASL") or False
-        self.do_auth = config.get("do_auth") or False
-        self.auth_pass = config.get("auth_pass") or None
-        self.auth_user = config.get("auth_user") or None
-        self.nick = config.get("nick") or "EzzyBot"
-        self.ident = config.get("indent") or "EzzyBot"
-        self.realname = config.get("realname") or "EzzyBot: a simple python framework for IRC bots."
-        self.channels = config.get("channels") or ["#EzzyBot"]
-        self.analytics = config.get("analytics") or True
-        self.quit_message = config.get("quit_message") or "EzzyBot: a simple python framework for IRC bots."
-        self.flood_protection = config.get("flood_protection") or False
-        self.permissions = config.get("permissions") or {}
-        self.proxy = config.get("proxy") or False
-        self.proxy_type = config.get("proxy_type") or "SOCKS5"
-        self.proxy_host = config.get("proxy_host") or ""
-        self.proxy_port = config.get("proxy_port") or 1080
+        self.host = config.get("host", "irc.freenode.net")
+        self.port = config.get("port", 6667)
+        self.ipv6 = config.get("IPv6", False)
+        self.ssl = config.get("SSL", False)
+        self.sasl = config.get("SASL", False)
+        self.do_auth = config.get("do_auth", False)
+        self.auth_pass = config.get("auth_pass", None)
+        self.auth_user = config.get("auth_user", None)
+        self.nick = config.get("nick", "EzzyBot")
+        self.ident = config.get("indent", "EzzyBot")
+        self.realname = config.get("realname", "EzzyBot: a simple python framework for IRC bots.")
+        self.channels = config.get("channels", ["#EzzyBot"])
+        self.analytics = config.get("analytics", True)
+        self.quit_message = config.get("quit_message", "EzzyBot: a simple python framework for IRC bots.")
+        self.flood_protection = config.get("flood_protection", False)
+        self.permissions = config.get("permissions", {})
+        self.proxy = config.get("proxy", False)
+        self.proxy_type = config.get("proxy_type", "SOCKS5")
+        self.proxy_host = config.get("proxy_host", "")
+        self.proxy_port = config.get("proxy_port", 1080)
         self.proxy_type = {"SOCKS5": socks.SOCKS5, "SOCKS4": socks.SOCKS4}[self.proxy_type]
-        self.log_channel = config.get("log_channel") or "#ezzybot"
+        self.log_channel = config.get("log_channel", "#ezzybot")
         
         self.colours = colours.colours()
         self.colors = colours.colours()
-        if self.proxy == True:
+        if self.proxy:
             self.sock = socks.socksocket()
             self.sock.set_proxy(socks.SOCKS5, self.proxy_host, self.proxy_port)
-        elif self.ipv6 == True:
+        elif self.ipv6:
             self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         else:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if self.ssl == True and self.proxy == False:
+        if self.ssl and not self.proxy:
             self.irc = securesl.wrap_socket(self.sock)
         else:
             self.irc = self.sock
