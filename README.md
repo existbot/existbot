@@ -31,4 +31,5 @@ mybot.run({"channels":["#ezzybot"], "host": "irc.freenode.net", "port": 6697, "s
 Devs are: zz, Bowserinator, BWBellairs, IndigoTiger
 
 Wanna know more? (IRC) Freenode: #ezzybot
+
 [![Visit our IRC Chat!](https://kiwiirc.com/buttons/chat.freenode.net/ezzybot.png)](https://kiwiirc.com/client/chat.freenode.net/?nick=ezzy|?&theme=cli#ezzybot)
