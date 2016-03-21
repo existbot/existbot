@@ -65,17 +65,17 @@ class connection_wrapper(object):
         self.bot=bot_class
     def send(self, raw):
         if self.flood_protection==False:
-            self.irc.send("{}\r\n".format(raw))#.encode("UTF-8"))
+            self.irc.send("{0}\r\n".format(raw))#.encode("UTF-8"))
         else:
-            flood_protect.queue_add(self.irc, "{}\r\n".format(raw))#.encode("UTF-8"))
+            flood_protect.queue_add(self.irc, "{0}\r\n".format(raw))#.encode("UTF-8"))
     def msg(self, channel, message):
         #self.send("PRIVMSG {} :{}".format(channel, message))
         MSGLEN = 459 - 10 - len(channel)
         message_byte_count = sys.getsizeof(message)-37
         strings = [message[i:i+MSGLEN] for i in range(0, message_byte_count, MSGLEN)]
         for message in strings:
-            self.send("PRIVMSG {} :{}".format(channel, message))
+            self.send("PRIVMSG {0} :{1}".format(channel, message))
     def notice(self, user, message):
-        self.send("NOTICE {} :{}".format(user, message))
+        self.send("NOTICE {0} :{1}".format(user, message))
     def quit(self, message=""):
         self.send("QUIT :"+message)
