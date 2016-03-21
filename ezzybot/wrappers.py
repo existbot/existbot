@@ -3,6 +3,7 @@ from fnmatch import fnmatch
 from Queue import Queue
 from threading import Thread
 from time import sleep
+import sys
 
 log=None
 
@@ -56,18 +57,24 @@ flood_protect = flood_protect_class()
 
 
 class connection_wrapper(object):
-    def __init__(self, connection, config, flood_protection=True):
+    def __init__(self, connection, config, flood_protection, bot_class):
         self.irc=connection
         self.flood_protection = flood_protection
         self.config = config
         self.db = thing_database()
+        self.bot=bot_class
     def send(self, raw):
         if self.flood_protection==False:
             self.irc.send("{}\r\n".format(raw))#.encode("UTF-8"))
         else:
             flood_protect.queue_add(self.irc, "{}\r\n".format(raw))#.encode("UTF-8"))
     def msg(self, channel, message):
-        self.send("PRIVMSG {} :{}".format(channel, message))
+        #self.send("PRIVMSG {} :{}".format(channel, message))
+        MSGLEN = 459 - 10 - len(channel)
+        message_byte_count = sys.getsizeof(message)-37
+        strings = [message[i:i+MSGLEN] for i in range(0, message_byte_count, MSGLEN)]
+        for message in strings:
+            self.send("PRIVMSG {} :{}".format(channel, message))
     def notice(self, user, message):
         self.send("NOTICE {} :{}".format(user, message))
     def quit(self, message=""):
