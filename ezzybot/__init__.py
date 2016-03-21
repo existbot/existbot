@@ -113,7 +113,9 @@ class bot(object):
             elif auth_msgs[1] in received or auth_msgs[2] in received:
                 return False
             
-    def run(self, config={}):
+    def run(self, config=None):
+        if config is None:
+            config = {}
         global log
         self.config_host = config.get("host") or "irc.freenode.net"
         self.config_port = config.get("port") or 6667
