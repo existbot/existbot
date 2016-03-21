@@ -36,7 +36,7 @@ class bot(object):
         for fullcommand, command in self.commands.iteritems():
             if command["commandname"] == info["args"].lstrip():
                 conn.notice(info['nick'], " {0} : {1}".format(fullcommand, command['help']))
-                conn.msg(info['channel'], command['help'])
+                #conn.msg(info['channel'], command['help'])
                 
     def list(self, info=None, conn=None):
         return " ".join([self.commands[command]["commandname"] for command in self.commands.keys()])
