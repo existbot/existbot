@@ -16,10 +16,21 @@ import os
 import re
 import wrappers
 
+import plugin
 class systemExit(Exception):
     pass
 
 class bot(object):
+    def reload(self, info, conn):
+        print "RELOADING!!"
+        for i in self.plugins:
+            for j in self.commands: 
+                if self.commands[j]["function"] == i.function:
+                    i.reload()
+                    self.commands[j]["function"] = i.function
+        return "Reloaded"
+        
+        
     def help(self, conn=None, info=None):
         #self.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
         for fullcommand, command in self.commands.iteritems():
@@ -36,13 +47,18 @@ class bot(object):
         self.commands = {}
         self.triggers = []
         self.regex = []
+        self.plugins = []
         #---Built-in---#
         self.commands["!help"] = {"function": self.help, "help": "This command.", "prefix": "!", "commandname": "help", "perms": "all"}
         self.commands["!quit"] = {"function": self.bot_quit, "help": "Forces the bot :to quit", "prefix":"!", "commandname": "quit", "perms":["admin"]}
         self.commands["!list"] = {"function": self.list, "help":"list : lists all commands", "prefix": "!", "commandname": "list", "perms": "all"}
+        self.commands["!reload"] = {"function": self.reload, "help":"reload : reloads all commands", "prefix": "!", "commandname": "reload", "perms": "all"}
     
     def assign(self,function, help_text, commandname, prefix="!", perms="all"):
-        self.commands[prefix+commandname] = {"function": function, "help": help_text, "prefix": prefix, "commandname": commandname, "fullcommand": prefix+commandname, "perms": perms}
+        p = plugin.Plugin(function)
+        p.load()
+        self.commands[prefix+commandname] = {"function": p.function, "help": help_text, "prefix": prefix, "commandname": commandname, "fullcommand": prefix+commandname, "perms": perms}
+        self.plugins.append(p)
     def trigger(self, function, trigger):
         self.triggers.append({"trigger": trigger, "function": function})
     def trigger_regex(self, function, search_for):
@@ -76,6 +92,7 @@ class bot(object):
                     plugin_wrapper.msg(info['nick'],"| "+str(self.output))
                 #plugin_wrapper.msg(channel,"| "+str(self.output))
         except Exception as e:
+            traceback.print_exc()
             self.log.error(self.colours.VIOLET+"Caused by {}, using command '{}' in {}".format(info['mask'], info['message'], info['channel']))
             plugin_wrapper.msg(channel, self.colours.RED+"Error! See {} for more info.".format(self.config_log_channel))
             for line in str(e).split("\n"):
@@ -134,7 +151,7 @@ class bot(object):
             self.irc = securesl.wrap_socket(self.sock)
         else:
             self.irc = self.sock
-        log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self.irc, config, self.config_flood_protection))
+        log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self))
         self.log = log
         wrappers.specify(self.log)
         #log.debug("Connecting to {} at port {}".format(self.host, self.port))
@@ -162,7 +179,7 @@ class bot(object):
         else:
             self.send("NICK {}".format(self.config_nick))
             self.send("USER {} * * :{}".format(self.config_ident, self.config_realname))
-            if self.config_do_auth:
+            if self.do_auth:
                 self.irc.send("PRIVMSG nickserv :identify {0} {1}\r\n".format(
                         self.auth_user, self.auth_pass).encode("UTF-8"))
         sleep(5)
@@ -191,7 +208,7 @@ class bot(object):
                         if self.command in self.commands.keys():
                             permissions_wrapper = wrappers.permissions_class(self.config_permissions)
                             if permissions_wrapper.check(self.commands[self.command]['perms'], self.mask) or self.commands[self.command]['perms'] == "all":
-                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config_flood_protection, config)
+                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self)
                                 plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,self.info,))
                                 plugin_thread.setDaemon(True)
                                 plugin_thread.start()
@@ -199,13 +216,13 @@ class bot(object):
                         for trigger in self.triggers:
                             if trigger['trigger'] == "*":
                                 self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
-                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.flood_protection, config)
+                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.flood_protection, self)
                                 trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
                                 trigger_thread.setDaemon(True)
                                 trigger_thread.start()
                             if trigger['trigger'] == self.t[1]:
                                 self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
-                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config_flood_protection, config)
+                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self)
                                 trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
                                 trigger_thread.setDaemon(True)
                                 trigger_thread.start()
@@ -214,7 +231,7 @@ class bot(object):
                             searched = re.search(search['regex'], irc_msg)
                             if searched != None:
                                 self.info = {"raw": irc_msg, "regex": search['regex'], "split": irc_msg.split(" "), "result": searched}
-                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config_flood_protection, config)
+                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self)
                                 trigger_thread= Thread(target=self.run_trigger, args=(search['function'], self.plugin_wrapper,self.info,))
                                 trigger_thread.setDaemon(True)
                                 trigger_thread.start()
