@@ -179,9 +179,9 @@ class bot(object):
         else:
             self.send("NICK {}".format(self.config_nick))
             self.send("USER {} * * :{}".format(self.config_ident, self.config_realname))
-            if self.do_auth:
+            if self.config_do_auth:
                 self.irc.send("PRIVMSG nickserv :identify {0} {1}\r\n".format(
-                        self.auth_user, self.auth_pass).encode("UTF-8"))
+                        self.config_auth_user, self.config_auth_pass).encode("UTF-8"))
         sleep(5)
         self.send("JOIN {}".format(",".join(self.config_channels)))
         try:
