@@ -85,7 +85,7 @@ class bot(object):
     def run_plugin(self, function, plugin_wrapper, channel, info):
         try:
             self.output =function(info=info, conn=plugin_wrapper)
-            if self.output != None:
+            if self.output is not None:
                 if channel.startswith("#"):
                     plugin_wrapper.msg(channel,"[{}] {}".format(info['nick'], str(self.output)))
                 else:
@@ -229,7 +229,7 @@ class bot(object):
                     if self.regex != []:
                         for search in self.regex:
                             searched = re.search(search['regex'], irc_msg)
-                            if searched != None:
+                            if searched is not None:
                                 self.info = {"raw": irc_msg, "regex": search['regex'], "split": irc_msg.split(" "), "result": searched}
                                 self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self)
                                 trigger_thread= Thread(target=self.run_trigger, args=(search['function'], self.plugin_wrapper,self.info,))
