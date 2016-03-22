@@ -104,12 +104,12 @@ class bot(object):
             for line in str(e).split("\n"):
                 self.log.error(line)
     def run_trigger(self, function, plugin_wrapper, info):
-        #try:
-        function(info=info, conn=plugin_wrapper)
-        #except Exception as e:
-           # self.log.error(self.colours.VIOLET+"Caused by {0}, using command '{1}' in {2}".format(info['mask'], info['message'], info['channel']))
-            #for line in str(e).split("\n"):
-            #    self.log.error(line)
+        try:
+            function(info=info, conn=plugin_wrapper)
+        except Exception as e:
+            #self.log.error(self.colours.VIOLET+"Caused by {0}, using command '{1}' in {2}".format(info['mask'], info['message'], info['channel']))
+            for line in str(e).split("\n"):
+                self.log.error(line)
 
     def confirmsasl(self):
         while True:
