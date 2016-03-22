@@ -60,9 +60,15 @@ class bot(object):
         self.commands[prefix+commandname] = {"function": p.function, "help": help_text, "prefix": prefix, "commandname": commandname, "fullcommand": prefix+commandname, "perms": perms}
         self.plugins.append(p)
     def trigger(self, function, trigger):
-        self.triggers.append({"trigger": trigger, "function": function})
+        p = plugin.Plugin(function)
+        p.load()
+        self.triggers.append({"trigger": trigger, "function": p.function})
+        self.plugins.append(p)
     def trigger_regex(self, function, search_for):
-        self.regex.append({"regex": search_for, "function": function})
+        p = plugin.Plugin(function)
+        p.load()
+        self.regex.append({"regex": search_for, "function": p.function})
+        self.plugins.append(p)
     def send(self, data):
         log.send(data)
         self.irc.send("{0}\r\n".format(data))
@@ -98,12 +104,13 @@ class bot(object):
             for line in str(e).split("\n"):
                 self.log.error(line)
     def run_trigger(self, function, plugin_wrapper, info):
-        try:
-            function(info=info, conn=plugin_wrapper)
-        except Exception as e:
-            self.log.error(self.colours.VIOLET+"Caused by {0}, using command '{1}' in {2}".format(info['mask'], info['message'], info['channel']))
-            for line in str(e).split("\n"):
-                self.log.error(line)
+        #try:
+        function(info=info, conn=plugin_wrapper)
+        #except Exception as e:
+           # self.log.error(self.colours.VIOLET+"Caused by {0}, using command '{1}' in {2}".format(info['mask'], info['message'], info['channel']))
+            #for line in str(e).split("\n"):
+            #    self.log.error(line)
+
     def confirmsasl(self):
         while True:
             received = " ".join(self.printrecv()) 
