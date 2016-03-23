@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='ezzybot',
-      version='1.1.1',
+      version='1.2.0',
       description="Python IRC framework",
       url='https://ezzybot.zzirc.xyz',
       author='EzzyBot team',
