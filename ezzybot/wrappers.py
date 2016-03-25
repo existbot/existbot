@@ -11,12 +11,6 @@ def specify(local_log):
     global log
     log = local_log
 
-class thing_database(object):
-    def open(self, filename="ezzybot.thing"):
-        return thingdb.start(filename)
-    def save(self, database, filename="ezzybot.thing"):
-        return thingdb.save(database, filename)
-        
 class permissions_class(object):
     def __init__(self, permissions):
         self.permissions = permissions # {"admin": "zz!*@*"}
@@ -61,7 +55,7 @@ class connection_wrapper(object):
         self.irc=connection
         self.flood_protection = flood_protection
         self.config = config
-        self.db = thing_database()
+        self.db = thingdb.thing
         self.bot=bot_class
     def send(self, raw):
         if self.flood_protection==False:
