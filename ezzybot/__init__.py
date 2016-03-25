@@ -1,22 +1,13 @@
 #EzzyBot 2016
 #Created by zz & Bowserinator & BWBellairs & IndigoTiger (freenode @ #ezzybot)
-
-import socket
 import ssl as securesl
-import logging
-from time import sleep
-import time
-import traceback
-import json
+import json, socks, traceback, time, socket, os, re
 from threading import Thread
-import socks
 from base64 import b64encode
-import colours
-import os
-import re
-import wrappers
+from time import sleep
 
-import plugin
+import wrappers, plugin, logging
+from util import *
 class systemExit(Exception):
     pass
 
