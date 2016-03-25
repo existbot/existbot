@@ -1,7 +1,7 @@
 from time import strftime
 from datetime import datetime
 import os
-from colours import colours
+from util.colours import colours
 
 colours = colours()
 
