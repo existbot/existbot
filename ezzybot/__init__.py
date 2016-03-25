@@ -1,24 +1,39 @@
 #EzzyBot 2016
 #Created by zz & Bowserinator & BWBellairs & IndigoTiger (freenode @ #ezzybot)
-import ssl as securesl
-import json, socks, traceback, time, socket, os, re
-from threading import Thread
-from base64 import b64encode
-from time import sleep
 
-import wrappers, plugin, logging
-from util import *
+import socket
+import ssl as securesl
+import logging
+from time import sleep
+import time
+import traceback
+import json
+from threading import Thread
+import socks
+from base64 import b64encode
+import os
+import re
+import wrappers
+from util import hook, colours
+
+import os, glob
+import importlib
+
+def importPlugins():
+    result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/__init__.py")) 
+    for i in result:
+        globals()["plugins."+i.split("/")[-2]] = importlib.import_module("plugins."+i.split("/")[-2])
+
 class systemExit(Exception):
     pass
 
 class bot(object):
     def reload(self, info, conn):
         print "RELOADING!!"
-        for i in self.plugins:
-            for j in self.commands: 
-                if self.commands[j]["function"] == i.function:
-                    i.reload()
-                    self.commands[j]["function"] = i.function
+        importPlugins()
+        self.commands.update(hook.commands)
+        self.triggers = self.triggers+hook.triggers
+        self.regex=self.regex+hook.regexs
         return "Reloaded"
         
         
@@ -26,8 +41,8 @@ class bot(object):
         #self.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
         for fullcommand, command in self.commands.iteritems():
             if command["commandname"] == info["args"].lstrip():
-                conn.notice(info['nick'], " {0} : {1}".format(fullcommand, command['help']))
-                #conn.msg(info['channel'], command['help'])
+                conn.notice(info['nick'], " {} : {}".format(fullcommand, command['help']))
+                conn.msg(info['channel'], command['help'])
                 
     def list(self, info=None, conn=None):
         return " ".join([self.commands[command]["commandname"] for command in self.commands.keys()])
@@ -36,35 +51,25 @@ class bot(object):
         conn.quit()
     def __init__(self):
         self.commands = {}
+        #self.commands = hook.commands
         self.triggers = []
         self.regex = []
-        self.plugins = []
+        #self.plugins = []
         #---Built-in---#
         self.commands["!help"] = {"function": self.help, "help": "This command.", "prefix": "!", "commandname": "help", "perms": "all"}
         self.commands["!quit"] = {"function": self.bot_quit, "help": "Forces the bot :to quit", "prefix":"!", "commandname": "quit", "perms":["admin"]}
         self.commands["!list"] = {"function": self.list, "help":"list : lists all commands", "prefix": "!", "commandname": "list", "perms": "all"}
         self.commands["!reload"] = {"function": self.reload, "help":"reload : reloads all commands", "prefix": "!", "commandname": "reload", "perms": "all"}
-    
-    def assign(self,function, help_text, commandname, prefix="!", perms="all"):
-        p = plugin.Plugin(function)
-        p.load()
-        self.commands[prefix+commandname] = {"function": p.function, "help": help_text, "prefix": prefix, "commandname": commandname, "fullcommand": prefix+commandname, "perms": perms}
-        self.plugins.append(p)
-    def trigger(self, function, trigger):
-        p = plugin.Plugin(function)
-        p.load()
-        self.triggers.append({"trigger": trigger, "function": p.function})
-        self.plugins.append(p)
-    def trigger_regex(self, function, search_for):
-        p = plugin.Plugin(function)
-        p.load()
-        self.regex.append({"regex": search_for, "function": p.function})
-        self.plugins.append(p)
     def send(self, data):
         log.send(data)
-        self.irc.send("{0}\r\n".format(data))
+        self.irc.send("{}\r\n".format(data))
     def sendmsg(self, chan, msg):
         self.irc.send("PRIVMSG {0} :{1}\n".format(chan, msg))#.encode('utf-8'))
+    
+    def fifo(self):
+        while True:
+            got_message = raw_input("")
+            self.send(got_message) # input() for py 3
     def printrecv(self):
         self.ircmsg = self.recv()
         for line in self.ircmsg:
@@ -82,26 +87,26 @@ class bot(object):
     def run_plugin(self, function, plugin_wrapper, channel, info):
         try:
             self.output =function(info=info, conn=plugin_wrapper)
-            if self.output is not None:
+            if self.output != None:
                 if channel.startswith("#"):
-                    plugin_wrapper.msg(channel,"[{0}] {1}".format(info['nick'], str(self.output)))
+                    plugin_wrapper.msg(channel,"[{}] {}".format(info['nick'], str(self.output)))
                 else:
                     plugin_wrapper.msg(info['nick'],"| "+str(self.output))
                 #plugin_wrapper.msg(channel,"| "+str(self.output))
         except Exception as e:
             traceback.print_exc()
-            self.log.error(self.colours.VIOLET+"Caused by {0}, using command '{1}' in {2}".format(info['mask'], info['message'], info['channel']))
-            plugin_wrapper.msg(channel, self.colours.RED+"Error! See {0} for more info.".format(self.config_log_channel))
+            self.log.error(self.colours.VIOLET+"Caused by {}, using command '{}' in {}".format(info['mask'], info['message'], info['channel']))
+            if channel != self.config_log_channel:
+                plugin_wrapper.msg(channel, self.colours.RED+"Error! See {} for more info.".format(self.config_log_channel))
             for line in str(e).split("\n"):
-                self.log.error(line)
+                self.log.error("[{0}] {1}".format(type(e).__name__, line))
     def run_trigger(self, function, plugin_wrapper, info):
         try:
             function(info=info, conn=plugin_wrapper)
         except Exception as e:
-            #self.log.error(self.colours.VIOLET+"Caused by {0}, using command '{1}' in {2}".format(info['mask'], info['message'], info['channel']))
+            self.log.error(self.colours.VIOLET+"Caused by {}, using command '{}' in {}".format(info['mask'], info['message'], info['channel']))
             for line in str(e).split("\n"):
                 self.log.error(line)
-
     def confirmsasl(self):
         while True:
             received = " ".join(self.printrecv()) 
@@ -111,9 +116,7 @@ class bot(object):
             elif auth_msgs[1] in received or auth_msgs[2] in received:
                 return False
             
-    def run(self, config=None):
-        if config is None:
-            config = {}
+    def run(self, config={}):
         global log
         self.config_host = config.get("host") or "irc.freenode.net"
         self.config_port = config.get("port") or 6667
@@ -137,6 +140,12 @@ class bot(object):
         self.config_proxy_port = config.get("proxy_port") or 1080
         self.config_proxy_type = {"SOCKS5": socks.SOCKS5, "SOCKS4": socks.SOCKS4}[self.config_proxy_type]
         self.config_log_channel = config.get("log_channel") or "#ezzybot"
+        self.config_fifo = config.get("fifo") or True # Do you want fifo True?
+        
+        if self.config_fifo:
+            self.fifo_thread = Thread(target=self.fifo)
+            self.fifo_thread.setDaemon(True)
+            self.fifo_thread.start()
         
         self.colours = colours.colours()
         self.colors = colours.colours()
@@ -152,6 +161,10 @@ class bot(object):
         else:
             self.irc = self.sock
         log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self))
+        importPlugins()
+        self.commands.update(hook.commands)
+        self.triggers = self.triggers+hook.triggers
+        self.regex=self.regex+hook.regexs
         self.log = log
         wrappers.specify(self.log)
         #log.debug("Connecting to {} at port {}".format(self.host, self.port))
@@ -169,21 +182,21 @@ class bot(object):
             #authed = True
             if authed:
                 self.send("CAP END".encode("UTF-8"))
-                self.send("NICK {0}".format(self.config_nick))
-                self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
+                self.send("NICK {}".format(self.config_nick))
+                self.send("USER {} * * :{}".format(self.config_ident, self.config_realname))
             else:
                 log.error("[ERROR] SASL aborted. exiting.")
                 self.send("QUIT :[ERROR] SASL aborted".encode("UTF-8"))
                 raise systemExit()
 
         else:
-            self.send("NICK {0}".format(self.config_nick))
-            self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
-            if self.config_do_auth:
+            self.send("NICK {}".format(self.config_nick))
+            self.send("USER {} * * :{}".format(self.config_ident, self.config_realname))
+            if self.do_auth:
                 self.irc.send("PRIVMSG nickserv :identify {0} {1}\r\n".format(
-                        self.config_auth_user, self.config_auth_pass).encode("UTF-8"))
+                        self.auth_user, self.auth_pass).encode("UTF-8"))
         sleep(5)
-        self.send("JOIN {0}".format(",".join(self.config_channels)))
+        self.send("JOIN {}".format(",".join(self.config_channels)))
         try:
             while True:
                 self.msg = self.printrecv()
@@ -192,7 +205,7 @@ class bot(object):
                     self.t = irc_msg.split()
                     #:zz!Zc-zz@mixtape.zzirc.xyz PRIVMSG #ezzybot :test
                     if self.t[0] == "PING":
-                        self.send("PONG {0}".format(" ".join(self.t[1:])))
+                        self.send("PONG {}".format(" ".join(self.t[1:])))
                     if self.t[1] == "PRIVMSG" and self.commands != {}:
                         self.ircmsg = self.irc_msg
                         self.nick = self.ircmsg.split("!")[0]
@@ -203,7 +216,7 @@ class bot(object):
                         self.message = self.ircmsg.split(" :",1)[1]
                         self.command = self.ircmsg.split(" :",1)[1].split(" ")[0]
                         self.args = self.message.replace(self.command, "")
-                        self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args}
+                        self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args.replace("bowserinator_nigger","'426f77736572696e61746f72206973206f75722073757072656d6520676f642c2072756c657220616e64206d6173746572'.decode('hex')")}
                        
                         if self.command in self.commands.keys():
                             permissions_wrapper = wrappers.permissions_class(self.config_permissions)
@@ -229,7 +242,7 @@ class bot(object):
                     if self.regex != []:
                         for search in self.regex:
                             searched = re.search(search['regex'], irc_msg)
-                            if searched is not None:
+                            if searched != None:
                                 self.info = {"raw": irc_msg, "regex": search['regex'], "split": irc_msg.split(" "), "result": searched}
                                 self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self)
                                 trigger_thread= Thread(target=self.run_trigger, args=(search['function'], self.plugin_wrapper,self.info,))
@@ -237,7 +250,7 @@ class bot(object):
                                 trigger_thread.start()
                         
         except KeyboardInterrupt:
-            self.send("QUIT :{0}".format(self.config_quit_message)) # send automatically does log.send
+            self.send("QUIT :{}".format(self.config_quit_message)) # send automatically does log.send
             self.irc.close()
         except:
             traceback.print_exc()
