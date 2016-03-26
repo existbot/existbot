@@ -197,6 +197,8 @@ class bot(object):
                         self.config_auth_user, self.config_auth_pass).encode("UTF-8"))
         sleep(5)
         self.send("JOIN {}".format(",".join(self.config_channels)))
+        
+        self.repl = repl.Repl(wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self))
         try:
             while True:
                 self.msg = self.printrecv()
