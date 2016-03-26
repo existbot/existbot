@@ -197,6 +197,8 @@ class bot(object):
                         self.config_auth_user, self.config_auth_pass).encode("UTF-8"))
         sleep(5)
         self.send("JOIN {}".format(",".join(self.config_channels)))
+        
+        self.repl = repl.Repl(wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self))
         try:
             while True:
                 self.msg = self.printrecv()
@@ -216,7 +218,7 @@ class bot(object):
                         self.message = self.ircmsg.split(" :",1)[1]
                         self.command = self.ircmsg.split(" :",1)[1].split(" ")[0]
                         self.args = self.message.replace(self.command, "")
-                        self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args.replace("bowserinator_nigger","'426f77736572696e61746f72206973206f75722073757072656d6520676f642c2072756c657220616e64206d6173746572'.decode('hex')")}
+                        self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args}
                        
                         if self.command in self.commands.keys():
                             permissions_wrapper = wrappers.permissions_class(self.config_permissions)
