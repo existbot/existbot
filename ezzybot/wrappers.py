@@ -4,8 +4,9 @@ from Queue import Queue
 from threading import Thread
 from time import sleep
 import sys
-
+import importlib
 log=None
+
 
 def specify(local_log):
     global log
@@ -24,38 +25,47 @@ class permissions_class(object):
     
 class flood_protect_class(object):
     def __init__(self):
-        self.irc_queue = Queue()
+        self.irc_queue = []
         self.irc_queue_running = False
 
     def queue_thread(self):
         while True:
             try:
-                connection, raw = self.irc_queue.get_nowait()
+                connection = self.irc_queue[0][0]
+                raw = self.irc_queue[0][1]
             except:
                 self.irc_queue_running = False
                 break
             connection.send(raw)
             log.send(raw)
+            self.irc_queue.pop(0)
             sleep(0.5)
 
     def queue_add(self, connection, raw):
-        self.irc_queue.put((connection, raw))
+        self.irc_queue.append([connection, raw])
         if not self.irc_queue_running:
             self.irc_queue_running = True
             self.queuet = Thread(target=self.queue_thread)
             self.queuet.daemon = True
             self.queuet.start()
 
+global flood_protect
 flood_protect = flood_protect_class()
+
+class require_class(object):
+    def __init__(self, imports):
+        for to_import in imports:
+            exec "self.{} = importlib.import_module('{}')".format(to_import, to_import)
 
 
 class connection_wrapper(object):
-    def __init__(self, connection, config, flood_protection, bot_class):
+    def __init__(self, connection, config, flood_protection, bot_class, requires=[]):
         self.irc=connection
         self.flood_protection = flood_protection
         self.config = config
         self.db = thingdb.thing
         self.bot=bot_class
+        self.r = require_class(requires)
     def send(self, raw):
         if not self.flood_protection:
             self.irc.send("{}\r\n".format(raw))#.encode("UTF-8"))
@@ -74,7 +84,10 @@ class connection_wrapper(object):
         self.send("QUIT :"+message)
     def ctcp(self, user, message):
         self.send("PRIVMSG {} :\x01{}\x01\x01".format(user, message))
-        
+    def flush(self):
+        size = len(flood_protect.irc_queue)
+        flood_protect.__init__()
+        return str(size)
     def ping(self): 
         self.irc.send("PONG :pingis\n".encode('utf-8'))
     def partchan(self,chan):
