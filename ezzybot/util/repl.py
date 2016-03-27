@@ -10,12 +10,14 @@ class Repl(code.InteractiveConsole):
         self.buf = ""
 
     def write(self, data):
-        self.buf += data
+        self.buf += str(data)
 
     def flush(self):
-        msg = self.buf.rstrip("\n")
-        if len(msg) > 0:
-            self.conn.msg(self.channel, "{}| {}".format(colours.LIGHTGREEN, msg))
+        lines=self.buf.split("\n")
+        for line in lines:
+            if self.channel != None:
+                if line != "":
+                    self.conn.msg(self.channel, "{}| {}".format(colours.LIGHTGREEN, line))
         self.buf = ""
 
     def run(self, channel, code):
