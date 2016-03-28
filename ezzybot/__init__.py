@@ -2,16 +2,20 @@
 #Created by zz & Bowserinator & BWBellairs & IndigoTiger (freenode @ #ezzybot)
 import socks, re, json, traceback, time, socket, os, glob, importlib
 import ssl as securesl
-import logging, wrappers
+import logging, wrappers, limit
 from time import sleep
 from threading import Thread
 from base64 import b64encode
-from util import hook, colours, repl
+from util import hook, colours, repl, web
 
-def importPlugins():
+def importPlugins(do_reload=False):
     result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
     for i in result:
-        globals()["plugins."+i.split("/")[-2]] = __import__("plugins."+i.split("/")[-2])
+        if not do_reload:
+            plugin = importlib.import_module("plugins."+i.split("/")[-2])
+        else:
+            plugin = reload(importlib.import_module("plugins."+i.split("/")[-2]))
+        globals()["plugins."+i.split("/")[-2]] = plugin
 
 class systemExit(Exception):
     pass
@@ -19,18 +23,17 @@ class systemExit(Exception):
 class bot(object):
     def reload(self, info, conn):
         self.log.debug("Attemping Reload...", info['channel'])
-        importPlugins()
+        importPlugins(True)
         self.log.debug("Plugins sucessfully imported", info['channel'])
-        self.commands.update(hook.commands)
-        self.regex = self.regex+hook.regexs
-        self.triggers = self.triggers+hook.triggers
         self.log.debug("Plugins sucessfully added to list", info['channel'])
+        #return web.paste(" reloaded\n".join(self.commands.keys()))
+        
     def help(self, conn=None, info=None):
         #self.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
         for fullcommand, command in self.commands.iteritems():
             if command["commandname"] == info["args"].lstrip():
                 conn.notice(info['nick'], " {} : {}".format(fullcommand, command['help']))
-                conn.msg(info['channel'], command['help'])
+                #conn.msg(info['channel'], command['help'])
                 
     def list(self, info=None, conn=None):
         return " ".join([self.commands[command]["commandname"] for command in self.commands.keys()])
@@ -164,6 +167,7 @@ class bot(object):
             self.irc = self.sock
         log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self))
         importPlugins()
+        
         self.commands.update(hook.commands)
         self.triggers = self.triggers + hook.triggers
         self.regex = self.regex + hook.regexs
@@ -204,6 +208,7 @@ class bot(object):
         self.send("JOIN {}".format(",".join(self.config_channels)))
         
         self.repl = repl.Repl(wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, ["thingdb"]))
+        self.limit = limit.Limit(20, 4, 0.13)
         try:
             while True:
                 self.msg = self.printrecv()
@@ -224,14 +229,18 @@ class bot(object):
                         self.command = self.ircmsg.split(" :",1)[1].split(" ")[0]
                         self.args = self.message.replace(self.command, "")
                         self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args}
-                       
+                        info=self.info
                         if self.command in self.commands.keys():
                             permissions_wrapper = wrappers.permissions_class(self.config_permissions)
                             if permissions_wrapper.check(self.commands[self.command]['perms'], self.mask) or self.commands[self.command]['perms'] == "all":
-                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, self.commands[self.command]['requires'])
-                                plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,self.info,))
-                                plugin_thread.setDaemon(True)
-                                plugin_thread.start()
+                                if self.limit.command_limiter(info):
+                                    self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, self.commands[self.command]['requires'])
+                                    plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,self.info,))
+                                    plugin_thread.setDaemon(True)
+                                    plugin_thread.start()
+                                else:
+                                    self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, self.commands[self.command]['requires'])
+                                    self.plugin_wrapper.notice(info['nick'], "This command is rate limited, please try again later")
                     if self.triggers != []:
                         for trigger in self.triggers:
                             if trigger['trigger'] == "*":
