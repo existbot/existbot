@@ -1,12 +1,13 @@
 #EzzyBot 2016
 #Created by zz & Bowserinator & BWBellairs & IndigoTiger (freenode @ #ezzybot)
-import socks, re, json, traceback, time, socket, os, glob, importlib
+import socks, re, json, traceback, time, socket, os, glob, importlib, requests
 import ssl as securesl
 import logging, wrappers, limit
 from time import sleep
 from threading import Thread
 from base64 import b64encode
-from util import hook, colours, repl, web
+from util import hook, colours, repl, web, other
+#from importlib import reload
 
 def importPlugins(do_reload=False):
     result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
@@ -22,17 +23,17 @@ class systemExit(Exception):
 
 class bot(object):
     def reload(self, info, conn):
-        self.log.debug("Attemping Reload...", info['channel'])
+        self.log.debug("Attemping Reload...", info.channel)
         importPlugins(True)
-        self.log.debug("Plugins sucessfully imported", info['channel'])
-        self.log.debug("Plugins sucessfully added to list", info['channel'])
+        self.log.debug("Plugins sucessfully imported", info.channel)
+        self.log.debug("Plugins sucessfully added to list", info.channel)
         #return web.paste(" reloaded\n".join(self.commands.keys()))
         
     def help(self, conn=None, info=None):
         #self.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
         for fullcommand, command in self.commands.iteritems():
-            if command["commandname"] == info["args"].lstrip():
-                conn.notice(info['nick'], " {} : {}".format(fullcommand, command['help']))
+            if command["commandname"] == info.args.lstrip():
+                conn.notice(info.nick, " {} : {}".format(fullcommand, command['help']))
                 #conn.msg(info['channel'], command['help'])
                 
     def list(self, info=None, conn=None):
@@ -93,13 +94,13 @@ class bot(object):
             self.output =function(info=info, conn=plugin_wrapper)
             if self.output != None:
                 if channel.startswith("#"):
-                    plugin_wrapper.msg(channel,"[{}] {}".format(info['nick'], str(self.output)))
+                    plugin_wrapper.msg(channel,"[{}] {}".format(info.nick, str(self.output)))
                 else:
-                    plugin_wrapper.msg(info['nick'],"| "+str(self.output))
+                    plugin_wrapper.msg(info.nick,"| "+str(self.output))
                 #plugin_wrapper.msg(channel,"| "+str(self.output))
         except Exception as e:
             traceback.print_exc()
-            self.log.error(self.colours.VIOLET+"Caused by {}, using command '{}' in {}".format(info['mask'], info['message'], info['channel']))
+            self.log.error(self.colours.VIOLET+"Caused by {}, using command '{}' in {}".format(info.mask, info.message, info.channel))
             if channel != self.config_log_channel:
                 plugin_wrapper.msg(channel, self.colours.RED+"Error! See {} for more info.".format(self.config_log_channel))
             for line in str(e).split("\n"):
@@ -108,7 +109,7 @@ class bot(object):
         try:
             function(info=info, conn=plugin_wrapper)
         except Exception as e:
-            self.log.error(self.colours.VIOLET+"Caused by {}, using command '{}' in {}".format(info['mask'], info['message'], info['channel']))
+            self.log.error(self.colours.VIOLET+"Caused by {}, using command '{}' in {}".format(info.mask, info.message, info.channel))
             for line in str(e).split("\n"):
                 self.log.error(line)
     def confirmsasl(self):
@@ -146,6 +147,10 @@ class bot(object):
         self.config_log_channel = config.get("log_channel") or "#ezzybot"
         self.config_pass = config.get("pass") or None
         self.config_fifo = config.get("fifo") or True # Do you want fifo True?
+        
+        #load dev list
+        devs = eval(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
+        self.config_permissions['dev'] = devs
         
         if self.config_fifo:
             self.fifo_thread = Thread(target=self.fifo)
@@ -229,6 +234,7 @@ class bot(object):
                         self.command = self.ircmsg.split(" :",1)[1].split(" ")[0]
                         self.args = self.message.replace(self.command, "")
                         self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args}
+                        self.info = other.toClass(self.info)
                         info=self.info
                         if self.command in self.commands.keys():
                             permissions_wrapper = wrappers.permissions_class(self.config_permissions)
@@ -240,11 +246,12 @@ class bot(object):
                                     plugin_thread.start()
                                 else:
                                     self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, self.commands[self.command]['requires'])
-                                    self.plugin_wrapper.notice(info['nick'], "This command is rate limited, please try again later")
+                                    self.plugin_wrapper.notice(info.nick, "This command is rate limited, please try again later")
                     if self.triggers != []:
                         for trigger in self.triggers:
                             if trigger['trigger'] == "*":
                                 self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
+                                self.info = other.toClass(self.info)
                                 self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.flood_protection, self, trigger['requires'])
                                 trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
                                 trigger_thread.setDaemon(True)
@@ -257,12 +264,14 @@ class bot(object):
                                 self.mask = self.irc_msg.split(" PRIVMSG ")[0]
                                 self.message = self.irc_msg.split(" :",1)[1]
                                 self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message}
+                                self.info = other.toClass(self.info)
                                 self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, trigger['requires'])
                                 trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
                                 trigger_thread.setDaemon(True)
                                 trigger_thread.start()
                             elif trigger['trigger'] == self.t[1]:
                                 self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
+                                self.info = other.toClass(self.info)
                                 self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, trigger['requires'])
                                 trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
                                 trigger_thread.setDaemon(True)
@@ -272,6 +281,7 @@ class bot(object):
                             searched = re.search(search['regex'], irc_msg)
                             if searched != None:
                                 self.info = {"raw": irc_msg, "regex": search['regex'], "split": irc_msg.split(" "), "result": searched}
+                                self.info = other.toClass(self.info)
                                 self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, search['requires'])
                                 trigger_thread= Thread(target=self.run_trigger, args=(search['function'], self.plugin_wrapper,self.info,))
                                 trigger_thread.setDaemon(True)
