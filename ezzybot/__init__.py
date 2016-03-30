@@ -144,7 +144,7 @@ class bot(object):
         self.config_proxy_host = config.get("proxy_host") or ""
         self.config_proxy_port = config.get("proxy_port") or 1080
         self.config_proxy_type = {"SOCKS5": socks.SOCKS5, "SOCKS4": socks.SOCKS4}[self.config_proxy_type]
-        self.config_log_channel = config.get("log_channel") or "#ezzybot"
+        self.config_log_channel = config.get("log_channel") or "#ezzybot-debug"
         self.config_pass = config.get("pass") or None
         self.config_fifo = config.get("fifo") or True # Do you want fifo True?
         self.config_command_limiting_initial_tokens = config.get("command_limiting_initial_tokens") or 20
