@@ -218,11 +218,11 @@ class bot(object):
         
         self.repl = repl.Repl(wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, ["thingdb"]))
         self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate)
-        try:
-            if str(self.latest) != str(__import__('ezzybot').__version__):
-                log.debug("New version of ezzybot ({}) is out, check ezzybot/ezzybot on github for installation info.".format(__import__('ezzybot').__version__))
-        except:
-            log.error("ezzybot version check somewhat failed..")
+        #try:
+        if str(self.latest) != str(__import__('ezzybot').__version__):
+            log.debug("New version of ezzybot ({}) is out, check ezzybot/ezzybot on github for installation info.".format(__import__('ezzybot').__version__))
+        #except:
+        #    log.error("ezzybot version check somewhat failed..")
         try:
             while True:
                 self.msg = self.printrecv()
