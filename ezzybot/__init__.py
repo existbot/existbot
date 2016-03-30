@@ -220,7 +220,7 @@ class bot(object):
         self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate)
         #try:
         if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
-            log.debug("New version of ezzybot ({}) is out, check ezzybot/ezzybot on github for installation info.".format(pkg_resources.get_distribution("ezzybot").version))
+            log.debug("New version of ezzybot ({}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest))) # dev build support?
         #except:
         #    log.error("ezzybot version check somewhat failed..")
         try:
