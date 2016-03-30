@@ -1,6 +1,6 @@
 #EzzyBot 2016
 #Created by zz & Bowserinator & BWBellairs & IndigoTiger (freenode @ #ezzybot)
-import socks, re, json, traceback, time, socket, os, glob, importlib, requests
+import socks, re, json, traceback, time, socket, os, glob, importlib, requests, pkg_resources
 import ssl as securesl
 import logging, wrappers, limit
 from time import sleep
@@ -219,7 +219,7 @@ class bot(object):
         self.repl = repl.Repl(wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, ["thingdb"]))
         self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate)
         #try:
-        if str(self.latest) != str(__import__('ezzybot').__version__):
+        if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
             log.debug("New version of ezzybot ({}) is out, check ezzybot/ezzybot on github for installation info.".format(__import__('ezzybot').__version__))
         #except:
         #    log.error("ezzybot version check somewhat failed..")
