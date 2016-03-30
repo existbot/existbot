@@ -147,10 +147,14 @@ class bot(object):
         self.config_log_channel = config.get("log_channel") or "#ezzybot"
         self.config_pass = config.get("pass") or None
         self.config_fifo = config.get("fifo") or True # Do you want fifo True?
+        self.config_command_limiting_initial_tokens = config.get("command_limiting_initial_tokens") or 20
+        self.config_command_limiting_message_cost = config.get("command_limiting_message_cost") or 4
+        self.config_command_limiting_restore_rate = config.get("command_limiting_restore_rate") or 0.13
         
         #load dev list
         devs = eval(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
         self.config_permissions['dev'] = devs
+        self.latest = requests.get("https://pypi.python.org/pypi/ezzybot/json").json()['info']['version']
         
         if self.config_fifo:
             self.fifo_thread = Thread(target=self.fifo)
@@ -213,7 +217,12 @@ class bot(object):
         self.send("JOIN {}".format(",".join(self.config_channels)))
         
         self.repl = repl.Repl(wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, ["thingdb"]))
-        self.limit = limit.Limit(20, 4, 0.13)
+        self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate)
+        try:
+            if str(self.latest) != str(__import__('ezzybot').__version__):
+                log.debug("New version of ezzybot ({}) is out, check ezzybot/ezzybot on github for installation info.".format(__import__('ezzybot').__version__))
+        except:
+            log.error("ezzybot version check somewhat failed..")
         try:
             while True:
                 self.msg = self.printrecv()
