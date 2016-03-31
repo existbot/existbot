@@ -14,7 +14,11 @@ pip install git+https://github.com/ezzybot/ezzybot
 
 #[Wiki](https://github.com/ezzybot/ezzybot/wiki)
 
-Devs are: zz, Bowserinator, BWBellairs, IndigoTiger
+Devs are:
+* zz
+* BWBellairs
+* Bowserinator
+* IndigoTiger
 
 Wanna know more? (IRC) Freenode: #ezzybot
 
