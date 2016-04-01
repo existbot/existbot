@@ -150,6 +150,7 @@ class bot(object):
         self.config_command_limiting_initial_tokens = config.get("command_limiting_initial_tokens") or 20
         self.config_command_limiting_message_cost = config.get("command_limiting_message_cost") or 4
         self.config_command_limiting_restore_rate = config.get("command_limiting_restore_rate") or 0.13
+        self.config_limit_override = config.get("limit_override") or ["admin", "dev"]
         
         #load dev list
         devs = eval(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
@@ -217,7 +218,7 @@ class bot(object):
         self.send("JOIN {}".format(",".join(self.config_channels)))
         
         self.repl = repl.Repl(wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, ["thingdb"]))
-        self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate)
+        self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
         try:
             if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
                 log.debug("New version of ezzybot ({}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest))) # dev build support?
