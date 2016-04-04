@@ -13,7 +13,7 @@ def list_bot(info=None, conn=None):
     
 def bot_quit(conn, info):
     conn.quit()
-def flush(self, conn, info):
+def flush(conn, info):
     return "Sucessfully flushed {} lines.".format(conn.flush())
 
 commands = {}
