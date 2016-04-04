@@ -8,53 +8,42 @@ from threading import Thread
 from base64 import b64encode
 from util import hook, colours, repl, web, other
 #from importlib import reload
+import builtin
+mtimes = {}
 
-def importPlugins(do_reload=False):
-    result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
-    for i in result:
-        if not do_reload:
-            plugin = importlib.import_module("plugins."+i.split("/")[-2])
-        else:
-            plugin = reload(importlib.import_module("plugins."+i.split("/")[-2]))
-        globals()["plugins."+i.split("/")[-2]] = plugin
 
 class systemExit(Exception):
     pass
 
 class bot(object):
-    def reload(self, info, conn):
+    def importPlugins(self, do_reload=False):
+        result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
+        hook.commands = {}
+        hook.regexs = []
+        hook.triggers = []
+        for i in result:
+            if i in mtimes:
+                if os.path.getmtime(i) != mtimes[i]:
+                    plugin = reload(importlib.import_module("plugins."+i.split("/")[-2]))
+                    globals()["plugins."+i.split("/")[-2]] = plugin
+            mtimes[i] = os.path.getmtime(i)
+    def reload_bot(self,info, conn):
         self.log.debug("Attemping Reload...", info.channel)
-        importPlugins(True)
+        self.importPlugins(True)
         self.log.debug("Plugins sucessfully imported", info.channel)
+        self.__init__()
+        self.commands.update(hook.commands)
+        self.triggers = self.triggers+hook.triggers
+        self.regex = self.regex+hook.regexs
         self.log.debug("Plugins sucessfully added to list", info.channel)
-        #return web.paste(" reloaded\n".join(self.commands.keys()))
-        
-    def help(self, conn=None, info=None):
-        #self.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
-        for fullcommand, command in self.commands.iteritems():
-            if command["commandname"] == info.args.lstrip():
-                conn.notice(info.nick, " {} : {}".format(fullcommand, command['help']))
-                #conn.msg(info['channel'], command['help'])
-                
-    def list(self, info=None, conn=None):
-        return " ".join([self.commands[command]["commandname"] for command in self.commands.keys()])
-        
-    def bot_quit(self, conn, info):
-        conn.quit()
-    def flush(self, conn, info):
-        return "Sucessfully flushed {} lines.".format(conn.flush())
+
     def __init__(self):
-        self.commands = {}
-        #self.commands = hook.commands
+        self.commands = builtin.commands
+        self.commands["!reload"] = {"function": self.reload_bot, "help":"reload : reloads all commands", "prefix": "!", "commandname": "reload", "perms": "all", "requires": []}
         self.triggers = []
         self.regex = []
         self.plugins = []
-        #---Built-in---#
-        self.commands["!help"] = {"function": self.help, "help": "This command.", "prefix": "!", "commandname": "help", "perms": "all", "requires": []}
-        self.commands["!quit"] = {"function": self.bot_quit, "help": "Forces the bot :to quit", "prefix":"!", "commandname": "quit", "perms":["admin"], "requires": []}
-        self.commands["!list"] = {"function": self.list, "help":"list : lists all commands", "prefix": "!", "commandname": "list", "perms": "all", "requires": []}
-        self.commands["!reload"] = {"function": self.reload, "help":"reload : reloads all commands", "prefix": "!", "commandname": "reload", "perms": "all", "requires": []}
-        self.commands["!flush"] = {"function": self.flush, "help": "Flushes queue", "prefix":"!", "commandname": "flush", "perms":["admin"], "requires": []}
+        
     #def assign(self,function, help_text, commandname, prefix="!", perms="all"):
     #    p = plugin.Plugin(function)
     #    p.load()
@@ -151,10 +140,13 @@ class bot(object):
         self.config_command_limiting_message_cost = config.get("command_limiting_message_cost") or 4
         self.config_command_limiting_restore_rate = config.get("command_limiting_restore_rate") or 0.13
         self.config_limit_override = config.get("limit_override") or ["admin", "dev"]
+        self.add_devs = config.get("add_devs") or False
         
         #load dev list
-        devs = eval(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
-        self.config_permissions['dev'] = devs
+        if self.add_devs:
+            devs = eval(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
+            self.config_permissions['dev'] = devs
+        #get latest version on pypi
         self.latest = requests.get("https://pypi.python.org/pypi/ezzybot/json").json()['info']['version']
         
         if self.config_fifo:
@@ -163,7 +155,7 @@ class bot(object):
             self.fifo_thread.start()
         
         self.colours = colours.colours()
-        self.colors = colours.colours()
+        self.colors = colours.colours() #americans
         if self.config_proxy == True:
             self.sock = socks.socksocket()
             self.sock.set_proxy(socks.SOCKS5, self.config_proxy_host, self.config_proxy_port)
@@ -176,7 +168,10 @@ class bot(object):
         else:
             self.irc = self.sock
         log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self))
-        importPlugins()
+        result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
+        for i in result:
+            mtimes[i] = 0
+        self.importPlugins()
         
         self.commands.update(hook.commands)
         self.triggers = self.triggers + hook.triggers
@@ -217,13 +212,13 @@ class bot(object):
         sleep(5)
         self.send("JOIN {}".format(",".join(self.config_channels)))
         
-        self.repl = repl.Repl(wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, ["thingdb"]))
+        self.repl = repl.Repl(wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self))
         self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
         try:
             if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
                 log.debug("New version of ezzybot ({}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest))) # dev build support?
         except:
-            log.error("ezzybot version check somewhat failed..")
+            log.error("Checking ezzybot's version failed.")
         try:
             while True:
                 self.msg = self.printrecv()
