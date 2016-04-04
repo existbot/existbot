@@ -3,6 +3,7 @@ from fnmatch import fnmatch
 from Queue import Queue
 from threading import Thread
 from time import sleep
+from util import other
 import sys
 import importlib
 log=None
@@ -18,11 +19,11 @@ class permissions_class(object):
         if perms == "all":
             return True
         for required_perm in perms:
-            for perm_mask in self.permissions[required_perm]:
-                if fnmatch(mask, perm_mask):
-                    return True
+            if required_perm in self.permissions:
+                for perm_mask in self.permissions[required_perm]:
+                    if fnmatch(mask, perm_mask):
+                        return True
         return False
-    
 class flood_protect_class(object):
     def __init__(self):
         self.irc_queue = []
@@ -52,12 +53,6 @@ class flood_protect_class(object):
 global flood_protect
 flood_protect = flood_protect_class()
 
-class require_class(object):
-    def __init__(self, imports):
-        for to_import in imports:
-            exec "self.{} = importlib.import_module('{}')".format(to_import, to_import)
-
-
 class connection_wrapper(object):
     def __init__(self, connection, config, flood_protection, bot_class, requires=[]):
         self.irc=connection
@@ -65,7 +60,11 @@ class connection_wrapper(object):
         self.config = config
         self.db = thingdb.thing
         self.bot=bot_class
-        self.r = require_class(requires)
+        #self.r = require_class(requires)
+        requirements = {}
+        for require in requires:
+            requirements[require] = importlib.import_module(require)
+        self.r = other.toClass(requirements)
     def send(self, raw):
         if not self.flood_protection:
             self.irc.send("{}\r\n".format(raw))#.encode("UTF-8"))
@@ -73,11 +72,12 @@ class connection_wrapper(object):
             flood_protect.queue_add(self.irc, "{}\r\n".format(raw))#.encode("UTF-8"))
     def msg(self, channel, message):
         #self.send("PRIVMSG {} :{}".format(channel, message))
-        MSGLEN = 459 - 10 - len(channel)
-        message_byte_count = sys.getsizeof(message)-37
-        strings = [message[i:i+MSGLEN] for i in range(0, message_byte_count, MSGLEN)]
-        for message in strings:
-            self.send("PRIVMSG {} :{}".format(channel, message))
+        if channel != None:
+            MSGLEN = 459 - 10 - len(channel)
+            message_byte_count = sys.getsizeof(message)-37
+            strings = [message[i:i+MSGLEN] for i in range(0, message_byte_count, MSGLEN)]
+            for message in strings:
+                self.send("PRIVMSG {} :{}".format(channel, message))
     def notice(self, user, message):
         self.send("NOTICE {} :{}".format(user, message))
     def quit(self, message=""):
