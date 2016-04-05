@@ -10,6 +10,13 @@ log=None
 
 
 def specify(local_log):
+    """wrappers.specify(self.log)
+    
+    Specifys the log for wrappers to use.
+    
+    Arguments:
+        local_log {Object} -- Log Object
+    """
     global log
     log = local_log
 class permissions_class(object):
