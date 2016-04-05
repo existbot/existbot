@@ -16,7 +16,18 @@ class systemExit(Exception):
     pass
 
 class bot(object):
+    """ezzybot.bot()
+    
+    Creates a EzzyBot instance.
+    """
     def importPlugins(self, do_reload=False):
+        """importPlugins
+        
+        Imports plugins from plugins/ folder
+        
+        Keyword Arguments:
+            do_reload {bool} -- Wether to reload or not. No longer used. (default: {False})
+        """
         result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
         hook.commands = {}
         hook.regexs = []
@@ -38,38 +49,53 @@ class bot(object):
         self.log.debug("Plugins sucessfully added to list", info.channel)
 
     def __init__(self):
+        """Initalizes bot() object
+        
+        Set's builtin commands and creates empty triggers and regex lists
+        """
         self.commands = builtin.commands
         self.commands["!reload"] = {"function": self.reload_bot, "help":"reload : reloads all commands", "prefix": "!", "commandname": "reload", "perms": "all", "requires": []}
         self.triggers = []
         self.regex = []
         self.plugins = []
-        
-    #def assign(self,function, help_text, commandname, prefix="!", perms="all"):
-    #    p = plugin.Plugin(function)
-    #    p.load()
-    #    self.commands[prefix+commandname] = {"function": p.function, "help": help_text, "prefix": prefix, "commandname": commandname, "fullcommand": prefix+commandname, "perms": perms}
-    #    self.plugins.append(p)
-    
-    def trigger(self, function, trigger):
-        self.triggers.append({"trigger": trigger, "function": function})
-    def trigger_regex(self, function, search_for):
-        self.regex.append({"regex": search_for, "function": function})
     def send(self, data):
+        """send("PRIVMSG #ezzybot :Hi")
+        
+        Sends data out to the working connection and log.
+        
+        Arguments:
+            data {String} -- [description]
+        """
         log.send(data)
         self.irc.send("{}\r\n".format(data))
     def sendmsg(self, chan, msg):
+        """sendmsg("#ezzybot", "Hi!")
+        
+        Sends a PRIVMSG to the working connection.
+        
+        Arguments:
+            chan {String} -- IRC Channel
+            msg {String} -- Message to be sent
+        """
         self.irc.send("PRIVMSG {0} :{1}\n".format(chan, msg))#.encode('utf-8'))
-    
     def fifo(self):
         while True:
             got_message = raw_input("")
             self.send(got_message) # input() for py 3
     def printrecv(self):
+        """printrecv()
+        
+        Recieves data from working connection and prints it.
+        """
         self.ircmsg = self.recv()
         for line in self.ircmsg:
             log.receive(line)
         return self.ircmsg
     def recv(self):
+        """recv()
+        
+        Recieves data from working connection and returns it.
+        """
         self.part = ""
         self.data = ""
         while not self.part.endswith("\r\n"):
@@ -79,6 +105,16 @@ class bot(object):
         self.data = self.data.splitlines()
         return self.data
     def run_plugin(self, function, plugin_wrapper, channel, info):
+        """run_plugin(hello, plugin_wrapper, channel, info)
+        
+        Runs function and prints result/error to irc.
+        
+        Arguments:
+            function {Function} -- Plugin function
+            plugin_wrapper {Object} -- ezzybot.wrappers.connection_wrapper object
+            channel {String} -- Channel to send result to
+            info {Object} -- ezzybot.util.other.toClass object
+        """
         try:
             self.output =function(info=info, conn=plugin_wrapper)
             if self.output != None:
@@ -95,6 +131,15 @@ class bot(object):
             for line in str(e).split("\n"):
                 self.log.error("[{0}] {1}".format(type(e).__name__, line))
     def run_trigger(self, function, plugin_wrapper, info):
+        """run_trigger(hello, plugin_wrapper, info)
+        
+        Runs trigger and messages errors.
+        
+        Arguments:
+            function {Function} -- Plugin function
+            plugin_wrapper {Object} -- ezzybot.wrappers.connection_wrapper object
+            info {Object} -- ezzybot.util.other.toClass object
+        """
         try:
             function(info=info, conn=plugin_wrapper)
         except Exception as e:
@@ -102,6 +147,13 @@ class bot(object):
             for line in str(e).split("\n"):
                 self.log.error(line)
     def confirmsasl(self):
+        """confirmsasl()
+        
+        Waits until SASL has succeeded or not.
+        
+        Returns:
+            bool -- Weather SASL has succeeded or not.
+        """
         while True:
             received = " ".join(self.printrecv())
             auth_msgs = [":SASL authentication successful", ":SASL authentication failed", ":SASL authentication aborted"]
@@ -111,6 +163,13 @@ class bot(object):
                 return False
             
     def run(self, config):
+        """run({'nick': 'EzzyBot'})
+        
+        Runs Ezzybot
+        
+        Arguments:
+            config {Dict} -- The config
+        """
         global log
         self.config_host = config.get("host") or "irc.freenode.net"
         self.config_port = config.get("port") or 6667
