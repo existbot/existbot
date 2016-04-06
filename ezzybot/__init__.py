@@ -143,7 +143,7 @@ class bot(object):
         try:
             function(info=info, conn=plugin_wrapper)
         except Exception as e:
-            self.log.error(self.colours.VIOLET+"Caused by {}, using command '{}' in {}".format(info.mask, info.message, info.channel))
+            self.log.error(self.colours.VIOLET+"Caused by {}".format(info.raw))
             for line in str(e).split("\n"):
                 self.log.error(line)
     def confirmsasl(self):
