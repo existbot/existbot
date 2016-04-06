@@ -201,6 +201,8 @@ class bot(object):
         self.config_limit_override = config.get("limit_override") or ["admin", "dev"]
         self.add_devs = config.get("add_devs") or False
         
+        self.shared_dict = {}
+        
         #load dev list
         if self.add_devs:
             devs = eval(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
