@@ -96,7 +96,7 @@ class connection_wrapper(object):
         if channel is not None:
             MSGLEN = 459 - 10 - len(channel)
             message_byte_count = sys.getsizeof(message)-37
-            strings = [message[i:i+MSGLEN] for i in range(0, message_byte_count, MSGLEN)]
+            strings = [message[i:i+MSGLEN] for i in range(0, message_byte_count, MSGLEN)][::-1]
             for message in strings:
                 flood_protect.queue_add_first(self.irc, "PRIVMSG {} :{}\r\n".format(channel, message))
     def notice(self, user, message):
