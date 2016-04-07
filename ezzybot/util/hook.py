@@ -17,7 +17,8 @@ def command(arg=None, **kwargs):
         args.setdefault('requires', [])
         args.update(kwargs)
         args.setdefault('fullcommand', args["prefix"]+args["commandname"])
-        commands[args["prefix"]+args["commandname"]] = args
+        if not args["prefix"]+args["commandname"] in commands.keys():
+            commands[args["prefix"]+args["commandname"]] = args
         return func
     if callable(arg):
         return command_wrapper(arg)
@@ -29,7 +30,8 @@ def regex(arg=None, **kwargs):
         args.setdefault('function', func)
         args.setdefault('requires', [])
         args.update(kwargs)
-        regexs.append(args)
+        if not args in regexs:
+            regexs.append(args)
         return func
     if callable(arg):
         return command_wrapper(arg)
@@ -42,7 +44,8 @@ def trigger(arg=None, **kwargs):
         args.setdefault('trigger', 'PRIVMSG')
         args.setdefault('requires', [])
         args.update(kwargs)
-        triggers.append(args)
+        if args not in triggers:
+            triggers.append(args)
         return func
     if callable(arg):
         return command_wrapper(arg)
