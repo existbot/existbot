@@ -15,14 +15,14 @@ class Logging(object):
         self.log_channel = log_channel
         self.conn = conn
     def error(self, error_msg, channel=None): # Sends a message before the bot shuts (ect) down becuase of a error | "[ERROR] Failed to connect"
-        if channel==None:
+        if channel is None:
             channel = self.log_channel
         print "{}[ERROR] {}".format(strftime("[%m/%d/%Y][%H:%M:%S]"), error_msg)
         self.conn.send("PRIVMSG {} :{}[ERROR] {}".format(channel, colours.RED, error_msg))
         self.log("[ERROR] {}".format(error_msg))
     
     def debug(self, debug_msg, channel=None): # Sends information to the user | "[DEBUG] Connecting to freenode
-        if channel==None:
+        if channel is None:
             channel = self.log_channel
         print "{}[DEBUG] {}".format(strftime("[%m/%d/%Y][%H:%M:%S]"), debug_msg)
         self.conn.send("PRIVMSG {} :{}[DEBUG] {}".format(channel, colours.BLUE, debug_msg))
@@ -38,7 +38,7 @@ class Logging(object):
         
     def search(self,time1,time2=None):
         time1 = time1.replace("]["," ").replace("]","").replace("[","")
-        if time2 != None:
+        if time2 is not None:
             time2 = time2.replace("]["," ").replace("]","").replace("[","")
 
         FMT = '%m/%d/%Y %H:%M:%S'
@@ -46,7 +46,7 @@ class Logging(object):
         for key in self.localEvents:
             tdelta = datetime.strptime(time1, FMT) - datetime.strptime( key.replace("]["," ").replace("]","").replace("[","") , FMT)
             if tdelta.total_seconds() > 0:
-                if time2 != None:
+                if time2 is not None:
                     dif2 = datetime.strptime(time2, FMT) - datetime.strptime( key.replace("]["," ").replace("]","").replace("[","") , FMT)
                     if dif2.total_seconds() < 0:
                         returned.append(self.localEvents[key])

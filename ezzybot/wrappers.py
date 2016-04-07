@@ -85,7 +85,7 @@ class connection_wrapper(object):
             flood_protect.queue_add(self.irc, "{}\r\n".format(raw))#.encode("UTF-8"))
     def msg(self, channel, message):
         #self.send("PRIVMSG {} :{}".format(channel, message))
-        if channel != None:
+        if channel is not None:
             MSGLEN = 459 - 10 - len(channel)
             message_byte_count = sys.getsizeof(message)-37
             strings = [message[i:i+MSGLEN] for i in range(0, message_byte_count, MSGLEN)]
@@ -93,7 +93,7 @@ class connection_wrapper(object):
                 self.send("PRIVMSG {} :{}".format(channel, message))
     def msg_first(self, channel, message):
         #self.send("PRIVMSG {} :{}".format(channel, message))
-        if channel != None:
+        if channel is not None:
             MSGLEN = 459 - 10 - len(channel)
             message_byte_count = sys.getsizeof(message)-37
             strings = [message[i:i+MSGLEN] for i in range(0, message_byte_count, MSGLEN)]

@@ -15,7 +15,7 @@ class Repl(code.InteractiveConsole):
     def flush(self):
         lines=self.buf.split("\n")
         for line in lines:
-            if self.channel != None:
+            if self.channel is not None:
                 if line != "":
                     self.conn.msg(self.channel, "{}| {}".format(colours.LIGHTGREEN, line))
         self.buf = ""
