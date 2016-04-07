@@ -44,8 +44,8 @@ class bot(object):
         self.log.debug("Plugins sucessfully imported", info.channel)
         self.__init__()
         self.commands.update(hook.commands)
-        self.triggers = self.triggers+hook.triggers
-        self.regex = self.regex+hook.regexs
+        self.triggers = hook.triggers
+        self.regex = hook.regexs
         self.log.debug("Plugins sucessfully added to list", info.channel)
 
     def __init__(self):
@@ -236,8 +236,8 @@ class bot(object):
         
         self.__init__()
         self.commands.update(hook.commands)
-        self.triggers = self.triggers+hook.triggers
-        self.regex = self.regex+hook.regexs
+        self.triggers = hook.triggers
+        self.regex = hook.regexs
         self.log = log
         wrappers.specify(self.log)
         #log.debug("Connecting to {} at port {}".format(self.host, self.port))
