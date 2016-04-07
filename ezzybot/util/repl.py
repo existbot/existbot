@@ -28,8 +28,8 @@ class Repl(code.InteractiveConsole):
         self.flush()
 
     def showtraceback(self):
-        type, value, lasttb = sys.exc_info()
-        self.conn.msg(self.channel, colours.RED+"{0}: {1}".format(type.__name__, value))
+        exc_type, value, lasttb = sys.exc_info()
+        self.conn.msg(self.channel, colours.RED+"{0}: {1}".format(exc_type.__name__, value))
 
     def showsyntaxerror(self, filename):
         self.showtraceback()
