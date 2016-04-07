@@ -56,6 +56,14 @@ class flood_protect_class(object):
             self.queuet = Thread(target=self.queue_thread)
             self.queuet.daemon = True
             self.queuet.start()
+            
+    def queue_add_first(self, connection, raw):
+        self.irc_queue=[[connection,raw]]+self.irc_queue
+        if not self.irc_queue_running:
+            self.irc_queue_running = True
+            self.queuet = Thread(target=self.queue_thread)
+            self.queuet.daemon = True
+            self.queuet.start()
 
 global flood_protect
 flood_protect = flood_protect_class()
@@ -85,6 +93,14 @@ class connection_wrapper(object):
             strings = [message[i:i+MSGLEN] for i in range(0, message_byte_count, MSGLEN)]
             for message in strings:
                 self.send("PRIVMSG {} :{}".format(channel, message))
+    def msg_first(self, channel, message):
+        #self.send("PRIVMSG {} :{}".format(channel, message))
+        if channel != None:
+            MSGLEN = 459 - 10 - len(channel)
+            message_byte_count = sys.getsizeof(message)-37
+            strings = [message[i:i+MSGLEN] for i in range(0, message_byte_count, MSGLEN)]
+            for message in strings:
+                flood_protect.queue_add_first(self.irc, "PRIVMSG {} :{}\r\n".format(channel, message))
     def notice(self, user, message):
         self.send("NOTICE {} :{}".format(user, message))
     def quit(self, message=""):
