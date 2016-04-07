@@ -30,7 +30,7 @@ def regex(arg=None, **kwargs):
         args.setdefault('function', func)
         args.setdefault('requires', [])
         args.update(kwargs)
-        if not args in regexs:
+        if args not in regexs:
             regexs.append(args)
         return func
     if callable(arg):
