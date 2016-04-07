@@ -41,13 +41,13 @@ class flood_protect_class(object):
             try:
                 connection = self.irc_queue[0][0]
                 raw = self.irc_queue[0][1]
+                self.irc_queue.pop(0)
             except:
                 self.irc_queue_running = False
                 break
             connection.send(raw)
             log.send(raw)
-            self.irc_queue.pop(0)
-            sleep(0.5)
+            sleep(1)
 
     def queue_add(self, connection, raw):
         self.irc_queue.append([connection, raw])
