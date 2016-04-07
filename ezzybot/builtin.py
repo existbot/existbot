@@ -1,6 +1,6 @@
-from util import hook, colours, repl, web, other
-import logging, wrappers, limit
-import socks, re, json, traceback, time, socket, os, glob, importlib, requests, pkg_resources
+from util import hook, colours, repl, other
+import logging, limit
+import socks, re, json, traceback, time, os, glob, importlib, requests, pkg_resources
 def help_bot(conn=None, info=None):
     #conn.bot.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
     for fullcommand, command in conn.bot.commands.iteritems():
@@ -8,7 +8,7 @@ def help_bot(conn=None, info=None):
             conn.notice(info.nick, " {} : {}".format(fullcommand, command['help']))
             #conn.msg(info['channel'], command['help'])
             
-def list_bot(info=None, conn=None):
+def list_bot(conn=None):
     return " ".join([conn.bot.commands[command]["commandname"] for command in conn.bot.commands.keys()])
     
 def bot_quit(conn, info):

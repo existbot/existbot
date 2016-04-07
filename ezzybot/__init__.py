@@ -1,12 +1,13 @@
 #EzzyBot 2016
 #Created by zz & Bowserinator & BWBellairs & IndigoTiger (freenode @ #ezzybot)
-import socks, re, json, traceback, time, socket, os, glob, importlib, requests, pkg_resources
+import socks, re, traceback, time, socket, os, glob, importlib, requests, pkg_resources
 import ssl as securesl
 import logging, wrappers, limit
 from time import sleep
 from threading import Thread
 from base64 import b64encode
-from util import hook, colours, repl, web, other
+from util import hook, colours, repl, other
+import ast
 #from importlib import reload
 import builtin
 mtimes = {}
@@ -54,7 +55,8 @@ class bot(object):
         Set's builtin commands and creates empty triggers and regex lists
         """
         self.commands = builtin.commands
-        self.commands["!reload"] = {"function": self.reload_bot, "help":"reload : reloads all commands", "prefix": "!", "commandname": "reload", "perms": "all", "requires": []}
+        self.commands["!reload"] = {"function": self.reload_bot, "help":"reload : reloads all commands", 
+                                    "prefix": "!", "commandname": "reload", "perms": "all", "requires": []}
         self.triggers = []
         self.regex = []
         self.plugins = []
@@ -117,7 +119,7 @@ class bot(object):
         """
         try:
             self.output =function(info=info, conn=plugin_wrapper)
-            if self.output != None:
+            if self.output is not None:
                 if channel.startswith("#"):
                     plugin_wrapper.msg(channel,"[{}] {}".format(info.nick, str(self.output)))
                 else:
@@ -205,7 +207,7 @@ class bot(object):
         
         #load dev list
         if self.add_devs:
-            devs = eval(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
+            devs = ast.literal_eval(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
             self.config_permissions['dev'] = devs
         #get latest version on pypi
         self.latest = requests.get("https://pypi.python.org/pypi/ezzybot/json").json()['info']['version']
@@ -217,14 +219,14 @@ class bot(object):
         
         self.colours = colours.colours()
         self.colors = colours.colours() #americans
-        if self.config_proxy == True:
+        if self.config_proxy:
             self.sock = socks.socksocket()
             self.sock.set_proxy(socks.SOCKS5, self.config_proxy_host, self.config_proxy_port)
-        elif self.config_ipv6 == True:
+        elif self.config_ipv6:
             self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         else:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if self.config_ssl == True and self.config_proxy == False:
+        if self.config_ssl and not self.config_proxy:
             self.irc = securesl.wrap_socket(self.sock)
         else:
             self.irc = self.sock
@@ -252,8 +254,7 @@ class bot(object):
             saslstring = saslstring.decode("UTF-8")
             self.send("CAP REQ :sasl".encode("UTF-8"))
             self.send("AUTHENTICATE PLAIN".encode("UTF-8"))
-            self.send("AUTHENTICATE {0}".format(saslstring).encode(
-                    "UTF-8"))
+            self.send("AUTHENTICATE {0}".format(saslstring).encode("UTF-8"))
             authed = self.confirmsasl()
             #authed = True
             if authed:
@@ -275,7 +276,8 @@ class bot(object):
         self.send("JOIN {}".format(",".join(self.config_channels)))
         
         self.repl = repl.Repl(wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self))
-        self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
+        self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, 
+                                 self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
         try:
             if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
                 log.debug("New version of ezzybot ({}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest))) # dev build support?
@@ -300,19 +302,23 @@ class bot(object):
                         self.message = self.ircmsg.split(" :",1)[1]
                         self.command = self.ircmsg.split(" :",1)[1].split(" ")[0]
                         self.args = self.message.replace(self.command, "")
-                        self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args}
+                        self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, 
+                                     "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args}
                         self.info = other.toClass(self.info)
                         info=self.info
                         if self.command in self.commands.keys():
                             permissions_wrapper = wrappers.permissions_class(self.config_permissions)
                             if permissions_wrapper.check(self.commands[self.command]['perms'], self.mask) or self.commands[self.command]['perms'] == "all":
                                 if self.limit.command_limiter(info):
-                                    self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, self.commands[self.command]['requires'])
-                                    plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,self.info,))
+                                    self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, 
+                                                                                    self, self.commands[self.command]['requires'])
+                                    plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], 
+                                                                                        self.plugin_wrapper,self.channel,self.info,))
                                     plugin_thread.setDaemon(True)
                                     plugin_thread.start()
                                 else:
-                                    self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, self.commands[self.command]['requires'])
+                                    self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, 
+                                                                                    self, self.commands[self.command]['requires'])
                                     self.plugin_wrapper.notice(info.nick, "This command is rate limited, please try again later")
                     if self.triggers != []:
                         for trigger in self.triggers:
@@ -346,7 +352,7 @@ class bot(object):
                     if self.regex != []:
                         for search in self.regex:
                             searched = re.search(search['regex'], irc_msg)
-                            if searched != None:
+                            if searched is not None:
                                 self.info = {"raw": irc_msg, "regex": search['regex'], "split": irc_msg.split(" "), "result": searched}
                                 self.info = other.toClass(self.info)
                                 self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, search['requires'])

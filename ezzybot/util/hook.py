@@ -1,7 +1,5 @@
 import inspect
 
-global commands, regexs, triggers
-
 commands = {}
 regexs = []
 triggers = []
