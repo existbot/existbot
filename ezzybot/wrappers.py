@@ -1,6 +1,5 @@
 import thingdb
 from fnmatch import fnmatch
-from Queue import Queue
 from threading import Thread
 from time import sleep
 from util import other
@@ -65,7 +64,6 @@ class flood_protect_class(object):
             self.queuet.daemon = True
             self.queuet.start()
 
-global flood_protect
 flood_protect = flood_protect_class()
 
 class connection_wrapper(object):

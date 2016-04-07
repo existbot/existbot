@@ -1,12 +1,13 @@
 #EzzyBot 2016
 #Created by zz & Bowserinator & BWBellairs & IndigoTiger (freenode @ #ezzybot)
-import socks, re, json, traceback, time, socket, os, glob, importlib, requests, pkg_resources
+import socks, re, traceback, time, socket, os, glob, importlib, requests, pkg_resources
 import ssl as securesl
 import logging, wrappers, limit
 from time import sleep
 from threading import Thread
 from base64 import b64encode
-from util import hook, colours, repl, web, other
+from util import hook, colours, repl, other
+import ast
 #from importlib import reload
 import builtin
 mtimes = {}
@@ -205,7 +206,7 @@ class bot(object):
         
         #load dev list
         if self.add_devs:
-            devs = eval(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
+            devs = ast.literal_eval(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
             self.config_permissions['dev'] = devs
         #get latest version on pypi
         self.latest = requests.get("https://pypi.python.org/pypi/ezzybot/json").json()['info']['version']
@@ -252,8 +253,7 @@ class bot(object):
             saslstring = saslstring.decode("UTF-8")
             self.send("CAP REQ :sasl".encode("UTF-8"))
             self.send("AUTHENTICATE PLAIN".encode("UTF-8"))
-            self.send("AUTHENTICATE {0}".format(saslstring).encode(
-                    "UTF-8"))
+            self.send("AUTHENTICATE {0}".format(saslstring).encode("UTF-8"))
             authed = self.confirmsasl()
             #authed = True
             if authed:
