@@ -234,9 +234,10 @@ class bot(object):
             mtimes[i] = 0
         self.importPlugins()
         
+        self.__init__()
         self.commands.update(hook.commands)
-        self.triggers = self.triggers + hook.triggers
-        self.regex = self.regex + hook.regexs
+        self.triggers = self.triggers+hook.triggers
+        self.regex = self.regex+hook.regexs
         self.log = log
         wrappers.specify(self.log)
         #log.debug("Connecting to {} at port {}".format(self.host, self.port))
