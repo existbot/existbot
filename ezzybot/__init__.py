@@ -1,12 +1,12 @@
 #EzzyBot 2016
 #Created by zz & Bowserinator & BWBellairs & IndigoTiger (freenode @ #ezzybot)
-import socks, re, json, traceback, time, socket, os, glob, importlib, requests, pkg_resources
+import socks, re, traceback, time, socket, os, glob, importlib, requests, pkg_resources, json
 import ssl as securesl
 import logging, wrappers, limit
 from time import sleep
 from threading import Thread
 from base64 import b64encode
-from util import hook, colours, repl, web, other
+from util import hook, colours, repl, other
 #from importlib import reload
 import builtin
 mtimes = {}
@@ -20,13 +20,10 @@ class bot(object):
     
     Creates a EzzyBot instance.
     """
-    def importPlugins(self, do_reload=False):
+    def importPlugins(self):
         """importPlugins
         
         Imports plugins from plugins/ folder
-        
-        Keyword Arguments:
-            do_reload {bool} -- Wether to reload or not. No longer used. (default: {False})
         """
         result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
         hook.commands = {}
@@ -216,7 +213,7 @@ class bot(object):
         
         #load dev list
         if self.add_devs:
-            devs = eval(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
+            devs = json.loads(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
             self.config_permissions['dev'] = devs
         #get latest version on pypi
         self.latest = requests.get("https://pypi.python.org/pypi/ezzybot/json").json()['info']['version']
@@ -228,18 +225,18 @@ class bot(object):
         
         self.colours = colours.colours()
         self.colors = colours.colours() #americans
-        if self.config_proxy == True:
+        if self.config_proxy:
             self.sock = socks.socksocket()
             self.sock.set_proxy(socks.SOCKS5, self.config_proxy_host, self.config_proxy_port)
-        elif self.config_ipv6 == True:
+        elif self.config_ipv6:
             self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         else:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if self.config_ssl == True and self.config_proxy == False:
+        if self.config_ssl and not self.config_proxy:
             self.irc = securesl.wrap_socket(self.sock)
         else:
             self.irc = self.sock
-        log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self))
+        log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, []))
         result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
         for i in result:
             mtimes[i] = 0
@@ -254,7 +251,7 @@ class bot(object):
         #log.debug("Connecting to {} at port {}".format(self.host, self.port))
         self.irc.connect((self.config_host, self.config_port))
         self.printrecv()
-        if self.config_pass != None:
+        if self.config_pass is not None:
             self.send("PASS "+self.config_pass)
             self.printrecv()
         if self.config_sasl:
@@ -285,7 +282,7 @@ class bot(object):
         sleep(5)
         self.send("JOIN {}".format(",".join(self.config_channels)))
         
-        self.repl = repl.Repl(wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self))
+        self.repl = repl.Repl(wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, []))
         self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
         try:
             if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
@@ -357,7 +354,7 @@ class bot(object):
                     if self.regex != []:
                         for search in self.regex:
                             searched = re.search(search['regex'], irc_msg)
-                            if searched != None:
+                            if searched is not None:
                                 self.info = {"raw": irc_msg, "regex": search['regex'], "split": irc_msg.split(" "), "result": searched}
                                 self.info = other.toClass(self.info)
                                 self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, search['requires'])
