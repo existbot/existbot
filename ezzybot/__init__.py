@@ -338,7 +338,7 @@ class bot(object):
                                 self.ident = self.irc_msg.split(" PRIVMSG ")[0].split("@")[0].split("!")[1]
                                 self.mask = self.irc_msg.split(" PRIVMSG ")[0]
                                 self.message = self.irc_msg.split(" :",1)[1]
-                                self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message}
+                                self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "raw": irc_msg}
                                 self.info = other.toClass(self.info)
                                 self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, trigger['requires'])
                                 trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
