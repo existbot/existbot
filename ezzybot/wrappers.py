@@ -119,6 +119,8 @@ class connection_wrapper(object):
         self.irc.send("PRIVMSG {0} :{1}\n".format(chan, msg))#.encode('utf-8'))
     def joinchan(self,chan):  
         self.irc.send("JOIN {0}\n".format(chan).encode('utf-8'))
+    def invite(self, chan, user):
+        self.irc.send("INVITE {} {}\n".format(user, chan).encode("utf-8"))
     def action(self,channel,message):
         self.sendmsg(channel,"\x01ACTION " + message + "\x01")
     def kickuser(self,channel,user,message):
