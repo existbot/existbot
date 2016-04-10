@@ -8,7 +8,7 @@ def help_bot(conn=None, info=None):
             conn.notice(info.nick, " {} : {}".format(fullcommand, command['help']))
             #conn.msg(info['channel'], command['help'])
             
-def list_bot(conn=None):
+def list_bot(conn=None, info=None):
     return " ".join([conn.bot.commands[command]["commandname"] for command in conn.bot.commands.keys()])
     
 def bot_quit(conn, info):
