@@ -169,7 +169,78 @@ class bot(object):
                 return True
             elif auth_msgs[1] in received or auth_msgs[2] in received:
                 return False
-            
+    def loop(self):
+        while True:
+            self.msg = self.printrecv()
+            for irc_msg in self.msg:
+                self.irc_msg = irc_msg.replace(":", "", 1)
+                self.t = irc_msg.split()
+                #:zz!Zc-zz@mixtape.zzirc.xyz PRIVMSG #ezzybot :test
+                if self.t[0] == "PING":
+                    self.send("PONG {}".format(" ".join(self.t[1:])))
+                if self.t[1] == "PRIVMSG" and self.commands != {}:
+                    self.ircmsg = self.irc_msg
+                    self.nick = self.ircmsg.split("!")[0]
+                    self.channel = self.ircmsg.split(' PRIVMSG ')[-1].split(' :')[0]
+                    self.hostname = self.ircmsg.split(" PRIVMSG ")[0].split("@")[1].replace(" ","")
+                    self.ident = self.ircmsg.split(" PRIVMSG ")[0].split("@")[0].split("!")[1]
+                    self.mask = self.ircmsg.split(" PRIVMSG ")[0]
+                    self.message = self.ircmsg.split(" :",1)[1]
+                    self.command = self.ircmsg.split(" :",1)[1].split(" ")[0]
+                    self.args = self.message.replace(self.command, "")
+                    self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args}
+                    self.info = other.toClass(self.info)
+                    info=self.info
+                    if self.command in self.commands.keys():
+                        permissions_wrapper = wrappers.permissions_class(self.config_permissions)
+                        if permissions_wrapper.check(self.commands[self.command]['perms'], self.mask) or self.commands[self.command]['perms'] == "all":
+                            if self.limit.command_limiter(info):
+                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self, self.commands[self.command]['requires'])
+                                plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,self.info,))
+                                plugin_thread.setDaemon(True)
+                                plugin_thread.start()
+                            else:
+                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self, self.commands[self.command]['requires'])
+                                self.plugin_wrapper.notice(info.nick, "This command is rate limited, please try again later")
+                if self.triggers != []:
+                    for trigger in self.triggers:
+                        if trigger['trigger'] == "*":
+                            self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
+                            self.info = other.toClass(self.info)
+                            self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.flood_protection, self, trigger['requires'])
+                            trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
+                            trigger_thread.setDaemon(True)
+                            trigger_thread.start()
+                        if trigger['trigger'].upper() == "PRIVMSG" and self.t[1] == "PRIVMSG":
+                            self.nick = self.irc_msg.split("!")[0]
+                            self.channel = self.irc_msg.split(' PRIVMSG ')[-1].split(' :')[0]
+                            self.hostname = self.irc_msg.split(" PRIVMSG ")[0].split("@")[1].replace(" ","")
+                            self.ident = self.irc_msg.split(" PRIVMSG ")[0].split("@")[0].split("!")[1]
+                            self.mask = self.irc_msg.split(" PRIVMSG ")[0]
+                            self.message = self.irc_msg.split(" :",1)[1]
+                            self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message}
+                            self.info = other.toClass(self.info)
+                            self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self, trigger['requires'])
+                            trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
+                            trigger_thread.setDaemon(True)
+                            trigger_thread.start()
+                        elif trigger['trigger'] == self.t[1]:
+                            self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
+                            self.info = other.toClass(self.info)
+                            self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self, trigger['requires'])
+                            trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
+                            trigger_thread.setDaemon(True)
+                            trigger_thread.start()
+                if self.regex != []:
+                    for search in self.regex:
+                        searched = re.search(search['regex'], irc_msg)
+                        if searched is not None:
+                            self.info = {"raw": irc_msg, "regex": search['regex'], "split": irc_msg.split(" "), "result": searched}
+                            self.info = other.toClass(self.info)
+                            self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self, search['requires'])
+                            trigger_thread= Thread(target=self.run_trigger, args=(search['function'], self.plugin_wrapper,self.info,))
+                            trigger_thread.setDaemon(True)
+                            trigger_thread.start()
     def run(self, config):
         """run({'nick': 'EzzyBot'})
         
@@ -179,6 +250,7 @@ class bot(object):
             config {Dict} -- The config
         """
         global log
+        self.config = config
         self.config_host = config.get("host") or "irc.freenode.net"
         self.config_port = config.get("port") or 6667
         self.config_ipv6 = config.get("IPv6") or False
@@ -224,7 +296,7 @@ class bot(object):
             self.fifo_thread.start()
         
         self.colours = colours.colours()
-        self.colors = colours.colours() #americans
+        self.colors = self.colours
         if self.config_proxy:
             self.sock = socks.socksocket()
             self.sock.set_proxy(socks.SOCKS5, self.config_proxy_host, self.config_proxy_port)
@@ -290,78 +362,7 @@ class bot(object):
         except:
             log.error("Checking ezzybot's version failed.")
         try:
-            while True:
-                self.msg = self.printrecv()
-                for irc_msg in self.msg:
-                    self.irc_msg = irc_msg.replace(":", "", 1)
-                    self.t = irc_msg.split()
-                    #:zz!Zc-zz@mixtape.zzirc.xyz PRIVMSG #ezzybot :test
-                    if self.t[0] == "PING":
-                        self.send("PONG {}".format(" ".join(self.t[1:])))
-                    if self.t[1] == "PRIVMSG" and self.commands != {}:
-                        self.ircmsg = self.irc_msg
-                        self.nick = self.ircmsg.split("!")[0]
-                        self.channel = self.ircmsg.split(' PRIVMSG ')[-1].split(' :')[0]
-                        self.hostname = self.ircmsg.split(" PRIVMSG ")[0].split("@")[1].replace(" ","")
-                        self.ident = self.ircmsg.split(" PRIVMSG ")[0].split("@")[0].split("!")[1]
-                        self.mask = self.ircmsg.split(" PRIVMSG ")[0]
-                        self.message = self.ircmsg.split(" :",1)[1]
-                        self.command = self.ircmsg.split(" :",1)[1].split(" ")[0]
-                        self.args = self.message.replace(self.command, "")
-                        self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args}
-                        self.info = other.toClass(self.info)
-                        info=self.info
-                        if self.command in self.commands.keys():
-                            permissions_wrapper = wrappers.permissions_class(self.config_permissions)
-                            if permissions_wrapper.check(self.commands[self.command]['perms'], self.mask) or self.commands[self.command]['perms'] == "all":
-                                if self.limit.command_limiter(info):
-                                    self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, self.commands[self.command]['requires'])
-                                    plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,self.info,))
-                                    plugin_thread.setDaemon(True)
-                                    plugin_thread.start()
-                                else:
-                                    self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, self.commands[self.command]['requires'])
-                                    self.plugin_wrapper.notice(info.nick, "This command is rate limited, please try again later")
-                    if self.triggers != []:
-                        for trigger in self.triggers:
-                            if trigger['trigger'] == "*":
-                                self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
-                                self.info = other.toClass(self.info)
-                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.flood_protection, self, trigger['requires'])
-                                trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
-                                trigger_thread.setDaemon(True)
-                                trigger_thread.start()
-                            if trigger['trigger'].upper() == "PRIVMSG" and self.t[1] == "PRIVMSG":
-                                self.nick = self.irc_msg.split("!")[0]
-                                self.channel = self.irc_msg.split(' PRIVMSG ')[-1].split(' :')[0]
-                                self.hostname = self.irc_msg.split(" PRIVMSG ")[0].split("@")[1].replace(" ","")
-                                self.ident = self.irc_msg.split(" PRIVMSG ")[0].split("@")[0].split("!")[1]
-                                self.mask = self.irc_msg.split(" PRIVMSG ")[0]
-                                self.message = self.irc_msg.split(" :",1)[1]
-                                self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "raw": irc_msg}
-                                self.info = other.toClass(self.info)
-                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, trigger['requires'])
-                                trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
-                                trigger_thread.setDaemon(True)
-                                trigger_thread.start()
-                            elif trigger['trigger'] == self.t[1]:
-                                self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
-                                self.info = other.toClass(self.info)
-                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, trigger['requires'])
-                                trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
-                                trigger_thread.setDaemon(True)
-                                trigger_thread.start()
-                    if self.regex != []:
-                        for search in self.regex:
-                            searched = re.search(search['regex'], irc_msg)
-                            if searched is not None:
-                                self.info = {"raw": irc_msg, "regex": search['regex'], "split": irc_msg.split(" "), "result": searched}
-                                self.info = other.toClass(self.info)
-                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, search['requires'])
-                                trigger_thread= Thread(target=self.run_trigger, args=(search['function'], self.plugin_wrapper,self.info,))
-                                trigger_thread.setDaemon(True)
-                                trigger_thread.start()
-                        
+            self.loop()
         except KeyboardInterrupt:
             self.send("QUIT :{}".format(self.config_quit_message)) # send automatically does log.send
             self.irc.close()
