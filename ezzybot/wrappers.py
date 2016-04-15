@@ -67,7 +67,7 @@ class flood_protect_class(object):
 flood_protect = flood_protect_class()
 
 class connection_wrapper(object):
-    def __init__(self, connection, config, flood_protection, bot_class, requires=[]):
+    def __init__(self, connection, config, flood_protection, bot_class, requires):
         self.irc=connection
         self.flood_protection = flood_protection
         self.config = config
@@ -109,38 +109,34 @@ class connection_wrapper(object):
         size = len(flood_protect.irc_queue)
         flood_protect.__init__()
         return str(size)
-    def ping(self): 
-        self.irc.send("PONG :pingis\n".encode('utf-8'))
-    def partchan(self,chan):
+    def part(self,chan):
         self.irc.send("PART {0}\n".format(chan).encode('utf-8'))
-    def changenick(self,nick):
+    def nick(self,nick):
         self.irc.send("NICK {0}\n".format(nick).encode('utf-8'))
-    def sendmsg(self,chan, msg):
-        self.irc.send("PRIVMSG {0} :{1}\n".format(chan, msg))#.encode('utf-8'))
-    def joinchan(self,chan):  
+    def join(self,chan):  
         self.irc.send("JOIN {0}\n".format(chan).encode('utf-8'))
     def invite(self, chan, user):
         self.irc.send("INVITE {} {}\n".format(user, chan).encode("utf-8"))
     def action(self,channel,message):
         self.sendmsg(channel,"\x01ACTION " + message + "\x01")
-    def kickuser(self,channel,user,message):
+    def kick(self,channel,user,message):
         user = user.replace(" ","").replace(":","")
         self.irc.send("KICK " + channel + " " + user+ " :" + message +"\r\n")
-    def opnick(self,channel,nick):
+    def op(self,channel,nick):
         self.irc.send("MODE {0} +o {1}\n".format(channel,nick).encode('utf-8'))
-    def deopnick(self,channel,nick):
+    def deop(self,channel,nick):
         self.irc.send("MODE {0} -o {1}\n".format(channel,nick).encode('utf-8'))
     def ban(self,channel,nick):
         self.irc.send("MODE {0} +b {1}\n".format(channel,nick).encode('utf-8'))
     def unban(self,channel,nick):
         self.irc.send("MODE {0} -b {1}\n".format(channel,nick).encode('utf-8'))
-    def stab(self,channel,nick):
+    def quiet(self,channel,nick):
         self.irc.send("MODE {0} +q {1}\n".format(channel,nick).encode('utf-8'))
-    def unstab(self,channel,nick):
+    def unquiet(self,channel,nick):
         self.irc.send("MODE {0} -q {1}\n".format(channel,nick).encode('utf-8'))
     def unvoice(self,channel,nick):
         self.irc.send("MODE {0} -v {1}\n".format(channel,nick).encode('utf-8'))
     def voice(self,channel,nick):
         self.irc.send("MODE {0} +v {1}\n".format(channel,nick).encode('utf-8'))
-    def setMode(self,channel,nick,mode):
+    def mode(self,channel,nick,mode):
         self.irc.send("MODE {0} {1} {2}\n".format(channel,mode,nick).encode('utf-8'))
