@@ -37,9 +37,10 @@ class Logging(object):
         self.log("[RECV] {}".format(receive_msg))
         
     def search(self,time1,time2=None):
+        time1 = datetime.fromtimestamp(time1).strftime("[%m/%d/%Y][%H:%M:%S]")
         time1 = time1.replace("]["," ").replace("]","").replace("[","")
         if time2 is not None:
-            time2 = time2.replace("]["," ").replace("]","").replace("[","")
+            time2 = datetime.fromtimestamp(time2).strftime("[%m/%d/%Y][%H:%M:%S]").replace("]["," ").replace("]","").replace("[","")
 
         FMT = '%m/%d/%Y %H:%M:%S'
         returned = []
