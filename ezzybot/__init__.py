@@ -9,7 +9,6 @@ from base64 import b64encode
 from util import hook, colours, repl, other
 #from importlib import reload
 import builtin
-mtimes = {}
 
 
 class systemExit(Exception):
@@ -30,18 +29,18 @@ class bot(object):
         hook.regexs = []
         hook.triggers = []
         for i in result:
-            if i in mtimes:
-                if os.path.getmtime(i) != mtimes[i]:
+            if i in self.mtimes:
+                if os.path.getmtime(i) != self.mtimes[i]:
                     plugin = importlib.import_module("plugins."+i.split("/")[-2])
                     globals()["plugins."+i.split("/")[-2]] = plugin
-            mtimes[i] = os.path.getmtime(i)
+            self.mtimes[i] = os.path.getmtime(i)
     def reload_bot(self,info, conn):
         self.log.debug("Attemping Reload...", info.channel)
         result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
         plugins = {}
         for i in result:
-            if i in mtimes:
-                if os.path.getmtime(i) != mtimes[i]:
+            if i in self.mtimes:
+                if os.path.getmtime(i) != self.mtimes[i]:
                     plugin = importlib.import_module("plugins."+i.split("/")[-2])
                     plugins["plugins."+i.split("/")[-2]] = plugin
         self.__init__()
@@ -61,6 +60,7 @@ class bot(object):
         
         Set's builtin commands and creates empty triggers and regex lists
         """
+        self.mtimes = {}
         self.commands = builtin.commands
         self.commands["!reload"] = {"function": self.reload_bot, "help":"reload : reloads all commands", "prefix": "!", "commandname": "reload", "perms": "all", "requires": []}
         self.triggers = []
@@ -218,7 +218,7 @@ class bot(object):
                             self.ident = self.irc_msg.split(" PRIVMSG ")[0].split("@")[0].split("!")[1]
                             self.mask = self.irc_msg.split(" PRIVMSG ")[0]
                             self.message = self.irc_msg.split(" :",1)[1]
-                            self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message}
+                            self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "raw": irc_msg}
                             self.info = other.toClass(self.info)
                             self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self, trigger['requires'])
                             trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
@@ -311,7 +311,7 @@ class bot(object):
         log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, []))
         result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
         for i in result:
-            mtimes[i] = 0
+            self.mtimes[i] = 0
         self.importPlugins()
         
         self.__init__()
