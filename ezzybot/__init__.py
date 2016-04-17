@@ -218,7 +218,7 @@ class bot(object):
                             self.ident = self.irc_msg.split(" PRIVMSG ")[0].split("@")[0].split("!")[1]
                             self.mask = self.irc_msg.split(" PRIVMSG ")[0]
                             self.message = self.irc_msg.split(" :",1)[1]
-                            self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "raw": irc_msg}
+                            self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message}
                             self.info = other.toClass(self.info)
                             self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self, trigger['requires'])
                             trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
@@ -354,7 +354,7 @@ class bot(object):
         sleep(5)
         self.send("JOIN {}".format(",".join(self.config_channels)))
         
-        self.repl = repl.Repl(wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, []))
+        self.repl = repl.Repl({"conn": wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, [])})
         self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
         try:
             if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
