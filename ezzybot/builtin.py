@@ -5,7 +5,7 @@ def help_bot(conn=None, info=None):
     #conn.bot.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
     for fullcommand, command in conn.bot.commands.iteritems():
         if command["commandname"] == info.args.lstrip():
-            conn.notice(info.nick, " {} : {}".format(fullcommand, command['help']))
+            conn.notice(info.nick, " {0} : {1}".format(fullcommand, command['help']))
             #conn.msg(info['channel'], command['help'])
             
 def list_bot(conn=None, info=None):
@@ -14,7 +14,7 @@ def list_bot(conn=None, info=None):
 def bot_quit(conn, info):
     conn.quit()
 def flush(conn, info):
-    return "Sucessfully flushed {} lines.".format(conn.flush())
+    return "Sucessfully flushed {0} lines.".format(conn.flush())
 
 commands = {}
 commands["!help"] = {"function": help_bot, "help": "This command.", "prefix": "!", "commandname": "help", "perms": "all", "requires": []}
