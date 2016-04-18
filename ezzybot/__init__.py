@@ -1,120 +1,109 @@
 #EzzyBot 2016
-#Created by zz & Bowserinator & BWBellairs(freenode)
-
-import socket
+#Created by zz & Bowserinator & BWBellairs & IndigoTiger (freenode @ #ezzybot)
+import socks, re, traceback, time, socket, os, glob, importlib, requests, pkg_resources, json
 import ssl as securesl
+import logging, wrappers, limit
 from time import sleep
-import time
-import traceback
-import json, thingdb
-from Queue import Queue
 from threading import Thread
-from fnmatch import fnmatch
-import socks
 from base64 import b64encode
-import colours
+from util import hook, colours, repl, other
+#from importlib import reload
+import builtin
+
 
 class systemExit(Exception):
     pass
 
-class flood_protect_class(object):
-    def __init__(self):
-        self.irc_queue = Queue()
-        self.irc_queue_running = False
-
-    def queue_thread(self):
-        while True:
-            try:
-                connection, raw = self.irc_queue.get_nowait()
-            except:
-                self.irc_queue_running = False
-                break
-            connection.send(raw)
-            print "[QUEUE-SEND) "+raw
-            sleep(0.5)
-
-    def queue_add(self, connection, raw):
-        self.irc_queue.put((connection, raw))
-        if not self.irc_queue_running:
-            self.irc_queue_running = True
-            self.queuet = Thread(target=self.queue_thread)
-            self.queuet.daemon = True
-            self.queuet.start()
-
-flood_protect = flood_protect_class()
-
-class permissions_class(object):
-    def __init__(self, permissions):
-        self.permissions = permissions # {"admin": "zz!*@*"}
-    def check(self, perms, mask): # perms = # ["admin"]
-        if perms == "all":
-            return True
-        for required_perm in perms:
-            for perm_mask in self.permissions[required_perm]:
-                if fnmatch(mask, perm_mask):
-                    return True
-        return False
-
-class thing_database(object):
-    def open(self, filename="ezzybot.thing"):
-        return thingdb.start(filename)
-    def save(self, database, filename="ezzybot.thing"):
-        return thingdb.save(database, filename)
-        
-
-class connection_wrapper(object):
-    def __init__(self, connection, config, flood_protection=True):
-        self.irc=connection
-        self.flood_protection = flood_protection
-        self.config = config
-        self.db = thing_database()
-    def send(self, raw):
-        if self.flood_protection==False:
-            print "[SEND) {}".format(raw)
-            self.irc.send("{}\r\n".format(raw))#.encode("UTF-8"))
-        else:
-            flood_protect.queue_add(self.irc, "{}\r\n".format(raw))#.encode("UTF-8"))
-    def msg(self, channel, message):
-        self.send("PRIVMSG {} :{}".format(channel, message))
-    def notice(self, user, message):
-        self.send("NOTICE {} :{}".format(user, message))
-    def quit(self, message=""):
-        self.send("QUIT :"+message)
-
-
 class bot(object):
-    def help(self, conn=None, info=None):
-        #self.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
-        for fullcommand, command in self.commands.iteritems():
-            if command["commandname"] == info["args"].lstrip():
-                conn.notice(info['nick'], " {} : {}".format(fullcommand, command['help']))
-                self.sendmsg("#ezzybot :{}".format(command['help']))
-                
-    def list(self, info=None, conn=None):
-        return " ".join([self.commands[command]["commandname"] for command in self.commands.keys()])
-        
-    def bot_quit(self, conn, info):
-        conn.quit()
-    def __init__(self):
-        self.commands = {}
-        #---Built-in---#
-        self.commands["!help"] = {"function": self.help, "help": "This command.", "prefix": "!", "commandname": "help", "perms": "all"}
-        self.commands["!quit"] = {"function": self.bot_quit, "help": "Forces the bot :to quit", "prefix":"!", "commandname": "quit", "perms":["admin"]}
-        self.commands["!list"] = {"function": self.list, "help":"list : lists all commands", "prefix": "!", "commandname": "list", "perms": "all"}
+    """ezzybot.bot()
     
-    def assign(self,function, help_text, commandname, prefix="!", perms="all"):
-        self.commands[prefix+commandname] = {"function": function, "help": help_text, "prefix": prefix, "commandname": commandname, "fullcommand": prefix+commandname, "perms": perms}
+    Creates a EzzyBot instance.
+    """
+    def importPlugins(self):
+        """importPlugins
+        
+        Imports plugins from plugins/ folder
+        """
+        result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
+        hook.commands = {}
+        hook.regexs = []
+        hook.triggers = []
+        for i in result:
+            if i in self.mtimes:
+                if os.path.getmtime(i) != self.mtimes[i]:
+                    plugin = importlib.import_module("plugins."+i.split("/")[-2])
+                    globals()["plugins."+i.split("/")[-2]] = plugin
+            self.mtimes[i] = os.path.getmtime(i)
+    def reload_bot(self,info, conn):
+        self.log.debug("Attemping Reload...", info.channel)
+        result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
+        plugins = {}
+        for i in result:
+            if i in self.mtimes:
+                if os.path.getmtime(i) != self.mtimes[i]:
+                    plugin = importlib.import_module("plugins."+i.split("/")[-2])
+                    plugins["plugins."+i.split("/")[-2]] = plugin
+        self.__init__()
+        hook.commands = {}
+        hook.regexs = []
+        hook.triggers = []
+        for pluginname, plugin in plugins.iteritems():
+            globals()[pluginname] = reload(plugin)
+        self.log.debug("Plugins sucessfully imported", info.channel)
+        self.commands.update(hook.commands)
+        self.triggers = hook.triggers
+        self.regex = hook.regexs
+        self.log.debug("Plugins sucessfully added to list", info.channel)
+
+    def __init__(self):
+        """Initalizes bot() object
+        
+        Set's builtin commands and creates empty triggers and regex lists
+        """
+        self.mtimes = {}
+        self.commands = builtin.commands
+        self.commands["!reload"] = {"function": self.reload_bot, "help":"reload : reloads all commands", "prefix": "!", "commandname": "reload", "perms": "all", "requires": []}
+        self.triggers = []
+        self.regex = []
+        self.plugins = []
     def send(self, data):
-        print("[SEND] {}".format(data))
+        """send("PRIVMSG #ezzybot :Hi")
+        
+        Sends data out to the working connection and log.
+        
+        Arguments:
+            data {String} -- [description]
+        """
+        log.send(data)
         self.irc.send("{}\r\n".format(data))
     def sendmsg(self, chan, msg):
+        """sendmsg("#ezzybot", "Hi!")
+        
+        Sends a PRIVMSG to the working connection.
+        
+        Arguments:
+            chan {String} -- IRC Channel
+            msg {String} -- Message to be sent
+        """
         self.irc.send("PRIVMSG {0} :{1}\n".format(chan, msg))#.encode('utf-8'))
+    def fifo(self):
+        while True:
+            got_message = raw_input("")
+            self.send(got_message) # input() for py 3
     def printrecv(self):
+        """printrecv()
+        
+        Recieves data from working connection and prints it.
+        """
         self.ircmsg = self.recv()
         for line in self.ircmsg:
-            print("[RECV) {}".format(line))
+            log.receive(line)
         return self.ircmsg
     def recv(self):
+        """recv()
+        
+        Recieves data from working connection and returns it.
+        """
         self.part = ""
         self.data = ""
         while not self.part.endswith("\r\n"):
@@ -124,64 +113,222 @@ class bot(object):
         self.data = self.data.splitlines()
         return self.data
     def run_plugin(self, function, plugin_wrapper, channel, info):
+        """run_plugin(hello, plugin_wrapper, channel, info)
+        
+        Runs function and prints result/error to irc.
+        
+        Arguments:
+            function {Function} -- Plugin function
+            plugin_wrapper {Object} -- ezzybot.wrappers.connection_wrapper object
+            channel {String} -- Channel to send result to
+            info {Object} -- ezzybot.util.other.toClass object
+        """
         try:
             self.output =function(info=info, conn=plugin_wrapper)
             if self.output != None:
                 if channel.startswith("#"):
-                    plugin_wrapper.msg(channel,"[{}] {}".format(info['nick'], str(self.output)))
+                    plugin_wrapper.msg(channel,"[{}] {}".format(info.nick, str(self.output)))
                 else:
-                    plugin_wrapper.msg(channel,"| "+str(self.output))
+                    plugin_wrapper.msg(info.nick,"| "+str(self.output))
                 #plugin_wrapper.msg(channel,"| "+str(self.output))
-        except:
+        except Exception as e:
             traceback.print_exc()
+            self.log.error(self.colours.VIOLET+"Caused by {}, using command '{}' in {}".format(info.mask, info.message, info.channel))
+            if channel != self.config_log_channel:
+                plugin_wrapper.msg(channel, self.colours.RED+"Error! See {} for more info.".format(self.config_log_channel))
+            for line in str(e).split("\n"):
+                self.log.error("[{0}] {1}".format(type(e).__name__, line))
+    def run_trigger(self, function, plugin_wrapper, info):
+        """run_trigger(hello, plugin_wrapper, info)
+        
+        Runs trigger and messages errors.
+        
+        Arguments:
+            function {Function} -- Plugin function
+            plugin_wrapper {Object} -- ezzybot.wrappers.connection_wrapper object
+            info {Object} -- ezzybot.util.other.toClass object
+        """
+        try:
+            function(info=info, conn=plugin_wrapper)
+        except Exception as e:
+            self.log.error(self.colours.VIOLET+"Caused by {}".format(info.raw))
+            for line in str(e).split("\n"):
+                self.log.error(line)
     def confirmsasl(self):
+        """confirmsasl()
+        
+        Waits until SASL has succeeded or not.
+        
+        Returns:
+            bool -- Weather SASL has succeeded or not.
+        """
         while True:
-            received = " ".join(self.printrecv()) 
+            received = " ".join(self.printrecv())
             auth_msgs = [":SASL authentication successful", ":SASL authentication failed", ":SASL authentication aborted"]
             if auth_msgs[0] in received: 
                 return True
             elif auth_msgs[1] in received or auth_msgs[2] in received:
                 return False
-            
-    def run(self, config={}):
-        self.host = config.get("host") or "irc.freenode.net"
-        self.port = config.get("port") or 6667
-        self.ssl = config.get("SSL") or False
-        self.sasl = config.get("SASL") or False
-        self.do_auth = config.get("do_auth") or False
-        self.auth_pass = config.get("auth_pass") or None
-        self.auth_user = config.get("auth_user") or None
-        self.nick = config.get("nick") or "EzzyBot"
-        self.ident = config.get("indent") or "EzzyBot"
-        self.realname = config.get("realname") or "EzzyBot: a simple python framework for IRC bots."
-        self.channels = config.get("channels") or ["#EzzyBot"]
-        self.analytics = config.get("analytics") or True
-        self.quit_message = config.get("quit_message") or "EzzyBot: a simple python framework for IRC bots."
-        self.flood_protection = config.get("flood_protection") or False
-        self.permissions = config.get("permissions") or {}
-        self.proxy = config.get("proxy") or False
-        self.proxy_type = config.get("proxy_type") or "SOCKS5"
-        self.proxy_host = config.get("proxy_host") or ""
-        self.proxy_port = config.get("proxy_port") or 1080
-        self.proxy_type = {"SOCKS5": socks.SOCKS5, "SOCKS4": socks.SOCKS4}[self.proxy_type]
+    def loop(self):
+        while True:
+            self.msg = self.printrecv()
+            for irc_msg in self.msg:
+                self.irc_msg = irc_msg.replace(":", "", 1)
+                self.t = irc_msg.split()
+                #:zz!Zc-zz@mixtape.zzirc.xyz PRIVMSG #ezzybot :test
+                if self.t[0] == "PING":
+                    self.send("PONG {}".format(" ".join(self.t[1:])))
+                if self.t[1] == "PRIVMSG" and self.commands != {}:
+                    self.ircmsg = self.irc_msg
+                    self.nick = self.ircmsg.split("!")[0]
+                    self.channel = self.ircmsg.split(' PRIVMSG ')[-1].split(' :')[0]
+                    self.hostname = self.ircmsg.split(" PRIVMSG ")[0].split("@")[1].replace(" ","")
+                    self.ident = self.ircmsg.split(" PRIVMSG ")[0].split("@")[0].split("!")[1]
+                    self.mask = self.ircmsg.split(" PRIVMSG ")[0]
+                    self.message = self.ircmsg.split(" :",1)[1]
+                    self.command = self.ircmsg.split(" :",1)[1].split(" ")[0]
+                    self.args = self.message.replace(self.command, "")
+                    self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args}
+                    self.info = other.toClass(self.info)
+                    info=self.info
+                    if self.command in self.commands.keys():
+                        permissions_wrapper = wrappers.permissions_class(self.config_permissions)
+                        if permissions_wrapper.check(self.commands[self.command]['perms'], self.mask) or self.commands[self.command]['perms'] == "all":
+                            if self.limit.command_limiter(info):
+                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self, self.commands[self.command]['requires'])
+                                plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,self.info,))
+                                plugin_thread.setDaemon(True)
+                                plugin_thread.start()
+                            else:
+                                self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self, self.commands[self.command]['requires'])
+                                self.plugin_wrapper.notice(info.nick, "This command is rate limited, please try again later")
+                if self.triggers != []:
+                    for trigger in self.triggers:
+                        if trigger['trigger'] == "*":
+                            self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
+                            self.info = other.toClass(self.info)
+                            self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.flood_protection, self, trigger['requires'])
+                            trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
+                            trigger_thread.setDaemon(True)
+                            trigger_thread.start()
+                        if trigger['trigger'].upper() == "PRIVMSG" and self.t[1] == "PRIVMSG":
+                            self.nick = self.irc_msg.split("!")[0]
+                            self.channel = self.irc_msg.split(' PRIVMSG ')[-1].split(' :')[0]
+                            self.hostname = self.irc_msg.split(" PRIVMSG ")[0].split("@")[1].replace(" ","")
+                            self.ident = self.irc_msg.split(" PRIVMSG ")[0].split("@")[0].split("!")[1]
+                            self.mask = self.irc_msg.split(" PRIVMSG ")[0]
+                            self.message = self.irc_msg.split(" :",1)[1]
+                            self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "raw": irc_msg}
+                            self.info = other.toClass(self.info)
+                            self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self, trigger['requires'])
+                            trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
+                            trigger_thread.setDaemon(True)
+                            trigger_thread.start()
+                        elif trigger['trigger'] == self.t[1]:
+                            self.info = {"raw": irc_msg, "trigger": trigger['trigger'], "split": irc_msg.split(" ")}
+                            self.info = other.toClass(self.info)
+                            self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self, trigger['requires'])
+                            trigger_thread= Thread(target=self.run_trigger, args=(trigger['function'], self.plugin_wrapper,self.info,))
+                            trigger_thread.setDaemon(True)
+                            trigger_thread.start()
+                if self.regex != []:
+                    for search in self.regex:
+                        searched = re.search(search['regex'], irc_msg)
+                        if searched is not None:
+                            self.info = {"raw": irc_msg, "regex": search['regex'], "split": irc_msg.split(" "), "result": searched}
+                            self.info = other.toClass(self.info)
+                            self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self, search['requires'])
+                            trigger_thread= Thread(target=self.run_trigger, args=(search['function'], self.plugin_wrapper,self.info,))
+                            trigger_thread.setDaemon(True)
+                            trigger_thread.start()
+    def run(self, config):
+        """run({'nick': 'EzzyBot'})
+        
+        Runs Ezzybot
+        
+        Arguments:
+            config {Dict} -- The config
+        """
+        global log
+        self.config = config
+        self.config_host = config.get("host") or "irc.freenode.net"
+        self.config_port = config.get("port") or 6667
+        self.config_ipv6 = config.get("IPv6") or False
+        self.config_ssl = config.get("SSL") or False
+        self.config_sasl = config.get("SASL") or False
+        self.config_do_auth = config.get("do_auth") or False
+        self.config_auth_pass = config.get("auth_pass") or None
+        self.config_auth_user = config.get("auth_user") or None
+        self.config_nick = config.get("nick") or "EzzyBot"
+        self.config_ident = config.get("indent") or "EzzyBot"
+        self.config_realname = config.get("realname") or "EzzyBot: a simple python framework for IRC bots."
+        self.config_channels = config.get("channels") or ["#EzzyBot"]
+        self.config_analytics = config.get("analytics") or True
+        self.config_quit_message = config.get("quit_message") or "EzzyBot: a simple python framework for IRC bots."
+        self.config_flood_protection = config.get("flood_protection") or True
+        self.config_permissions = config.get("permissions") or {}
+        self.config_proxy = config.get("proxy") or False
+        self.config_proxy_type = config.get("proxy_type") or "SOCKS5"
+        self.config_proxy_host = config.get("proxy_host") or ""
+        self.config_proxy_port = config.get("proxy_port") or 1080
+        self.config_proxy_type = {"SOCKS5": socks.SOCKS5, "SOCKS4": socks.SOCKS4}[self.config_proxy_type]
+        self.config_log_channel = config.get("log_channel") or "#ezzybot-debug"
+        self.config_pass = config.get("pass") or None
+        self.config_fifo = config.get("fifo") or True # Do you want fifo True?
+        self.config_command_limiting_initial_tokens = config.get("command_limiting_initial_tokens") or 20
+        self.config_command_limiting_message_cost = config.get("command_limiting_message_cost") or 4
+        self.config_command_limiting_restore_rate = config.get("command_limiting_restore_rate") or 0.13
+        self.config_limit_override = config.get("limit_override") or ["admin", "dev"]
+        self.add_devs = config.get("add_devs") or False
+        
+        self.shared_dict = {}
+        
+        #load dev list
+        if self.add_devs:
+            devs = json.loads(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
+            self.config_permissions['dev'] = devs
+        #get latest version on pypi
+        self.latest = requests.get("https://pypi.python.org/pypi/ezzybot/json").json()['info']['version']
+        
+        if self.config_fifo:
+            self.fifo_thread = Thread(target=self.fifo)
+            self.fifo_thread.setDaemon(True)
+            self.fifo_thread.start()
         
         self.colours = colours.colours()
-        self.colors = colours.colours()
-        if self.proxy == True:
+        self.colors = self.colours
+        if self.config_proxy:
             self.sock = socks.socksocket()
-            self.sock.set_proxy(socks.SOCKS5, self.proxy_host, self.proxy_port)
+            self.sock.set_proxy(socks.SOCKS5, self.config_proxy_host, self.config_proxy_port)
+        elif self.config_ipv6:
+            self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         else:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if self.ssl == True and self.proxy == False:
+        if self.config_ssl and not self.config_proxy:
             self.irc = securesl.wrap_socket(self.sock)
         else:
             self.irc = self.sock
-        print "[SEND] Connect {}:{}".format(self.host, self.port)
-        self.irc.connect((self.host, self.port))
+        log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, []))
+        result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
+        for i in result:
+            self.mtimes[i] = 0
+        self.importPlugins()
+        
+        self.__init__()
+        self.commands.update(hook.commands)
+        self.triggers = self.triggers+hook.triggers
+        self.regex = self.regex+hook.regexs
+        self.log = log
+        wrappers.specify(self.log)
+        #log.debug("Connecting to {} at port {}".format(self.host, self.port))
+        self.irc.connect((self.config_host, self.config_port))
         self.printrecv()
-        if self.sasl:
+        if self.config_pass is not None:
+            self.send("PASS "+self.config_pass)
+            self.printrecv()
+        if self.config_sasl:
             saslstring = b64encode("{0}\x00{0}\x00{1}".format(
-                            self.auth_user, self.auth_pass).encode("UTF-8"))
+                            self.config_auth_user, self.config_auth_pass).encode("UTF-8"))
             saslstring = saslstring.decode("UTF-8")
             self.send("CAP REQ :sasl".encode("UTF-8"))
             self.send("AUTHENTICATE PLAIN".encode("UTF-8"))
@@ -191,51 +338,33 @@ class bot(object):
             #authed = True
             if authed:
                 self.send("CAP END".encode("UTF-8"))
-                self.send("NICK {}".format(self.nick))
-                self.send("USER {} * * :{}".format(self.ident, self.realname))
+                self.send("NICK {}".format(self.config_nick))
+                self.send("USER {} * * :{}".format(self.config_ident, self.config_realname))
             else:
-                print("[ERROR] SASL aborted. exiting.")
+                log.error("[ERROR] SASL aborted. exiting.")
                 self.send("QUIT :[ERROR] SASL aborted".encode("UTF-8"))
                 raise systemExit()
 
         else:
-            self.send("NICK {}".format(self.nick))
-            self.send("USER {} * * :{}".format(self.ident, self.realname))
-            if self.do_auth:
+            self.send("NICK {}".format(self.config_nick))
+            self.send("USER {} * * :{}".format(self.config_ident, self.config_realname))
+            if self.config_do_auth:
                 self.irc.send("PRIVMSG nickserv :identify {0} {1}\r\n".format(
-                        self.auth_user, self.auth_pass).encode("UTF-8"))
+                        self.config_auth_user, self.config_auth_pass).encode("UTF-8"))
         sleep(5)
-        self.send("JOIN {}".format(",".join(self.channels)))
+        self.send("JOIN {}".format(",".join(self.config_channels)))
+        
+        self.repl = repl.Repl({"conn": wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self, [])})
+        self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
         try:
-            while True:
-                self.msg = self.printrecv()
-                for irc_msg in self.msg:
-                    self.irc_msg = irc_msg.strip(":")
-                    self.t = irc_msg.split()
-                    #:zz!Zc-zz@mixtape.zzirc.xyz PRIVMSG #ezzybot :test
-                    if self.t[0] == "PING":
-                        self.send("PONG {}".format(" ".join(self.t[1:])))
-                    elif self.t[1] == "PRIVMSG":
-                        self.ircmsg = self.irc_msg
-                        self.nick = self.ircmsg.split("!")[0]
-                        self.channel = self.ircmsg.split(' PRIVMSG ')[-1].split(' :')[0]
-                        self.hostname = self.ircmsg.split(" PRIVMSG ")[0].split("@")[1].replace(" ","")
-                        self.ident = self.ircmsg.split(" PRIVMSG ")[0].split("@")[0].split("!")[1]
-                        self.mask = self.ircmsg.split(" PRIVMSG ")[0]
-                        self.message = self.ircmsg.split(" :")[1]
-                        self.command = self.ircmsg.split(" :",1)[1].split(" ")[0]
-                        self.args = self.message.replace(self.command, "")
-                        self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args}
-                       
-                        if self.command in self.commands.keys():
-                            permissions_wrapper = permissions_class(self.permissions)
-                            if permissions_wrapper.check(self.commands[self.command]['perms'], self.mask) or self.commands[self.command]['perms'] == "all":
-                                self.plugin_wrapper=connection_wrapper(self.irc, self.flood_protection, config)
-                                plugin_thread= Thread(target=self.run_plugin, args=(self.commands[self.command]['function'], self.plugin_wrapper,self.channel,self.info,))
-                                plugin_thread.setDaemon(True)
-                                plugin_thread.start()
+            if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
+                log.debug("New version of ezzybot ({}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest))) # dev build support?
+        except:
+            log.error("Checking ezzybot's version failed.")
+        try:
+            self.loop()
         except KeyboardInterrupt:
-            self.send("QUIT :{}".format(self.quit_message))
+            self.send("QUIT :{}".format(self.config_quit_message)) # send automatically does log.send
             self.irc.close()
         except:
             traceback.print_exc()

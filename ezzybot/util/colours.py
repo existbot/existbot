@@ -1,4 +1,4 @@
-class colours(object): #thanks Bowserinator
+class colours(object):
     def __init__(self):
         self.WHITE = "\x030"
         self.BLACK = "\x031"
