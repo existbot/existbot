@@ -7,9 +7,9 @@ events = []
 def help_bot(conn=None, info=None):
     """Shows help for commands"""
     #conn.bot.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
-    for func in [func for func in conn.bot.events if func._event == "command"]:
-        if func._commandname == info.args.lstrip():
-            conn.notice(info.nick, " {} : {}".format(func._prefix+func._commandname, func._help))
+    for fullcommand, command in conn.bot.commands.iteritems():
+        if command["commandname"] == info.args.lstrip():
+            conn.notice(info.nick, " {0} : {1}".format(fullcommand, command['help']))
             #conn.msg(info['channel'], command['help'])
             
 setattr(help_bot, "_commandname", "help")
@@ -44,7 +44,7 @@ setattr(bot_quit, "_thread", False)
 events.append(bot_quit)
     
 def flush(conn, info):
-    return "Sucessfully flushed {} lines.".format(conn.flush())
+    return "Sucessfully flushed {0} lines.".format(conn.flush())
 
 setattr(flush, "_commandname", "flush")
 setattr(flush, "_prefix", "!")

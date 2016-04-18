@@ -75,9 +75,9 @@ class connection_wrapper(object):
         self.bot=bot_class
     def send(self, raw):
         if not self.flood_protection:
-            self.irc.send("{}\r\n".format(raw))#.encode("UTF-8"))
+            self.irc.send("{0}\r\n".format(raw))#.encode("UTF-8"))
         else:
-            flood_protect.queue_add(self.irc, "{}\r\n".format(raw))#.encode("UTF-8"))
+            flood_protect.queue_add(self.irc, "{0}\r\n".format(raw))#.encode("UTF-8"))
     def msg(self, channel, message):
         #self.send("PRIVMSG {} :{}".format(channel, message))
         if channel is not None:
@@ -85,7 +85,7 @@ class connection_wrapper(object):
             message_byte_count = sys.getsizeof(message)-37
             strings = [message[i:i+MSGLEN] for i in range(0, message_byte_count, MSGLEN)]
             for message in strings:
-                self.send("PRIVMSG {} :{}".format(channel, message))
+                self.send("PRIVMSG {0} :{1}".format(channel, message))
     def msg_first(self, channel, message):
         #self.send("PRIVMSG {} :{}".format(channel, message))
         if channel is not None:
@@ -93,13 +93,13 @@ class connection_wrapper(object):
             message_byte_count = sys.getsizeof(message)-37
             strings = [message[i:i+MSGLEN] for i in range(0, message_byte_count, MSGLEN)][::-1]
             for message in strings:
-                flood_protect.queue_add_first(self.irc, "PRIVMSG {} :{}\r\n".format(channel, message))
+                flood_protect.queue_add_first(self.irc, "PRIVMSG {0} :{1}\r\n".format(channel, message))
     def notice(self, user, message):
-        self.send("NOTICE {} :{}".format(user, message))
+        self.send("NOTICE {0} :{1}".format(user, message))
     def quit(self, message=""):
         self.send("QUIT :"+message)
     def ctcp(self, user, message):
-        self.send("PRIVMSG {} :\x01{}\x01\x01".format(user, message))
+        self.send("PRIVMSG {0} :\x01{1}\x01\x01".format(user, message))
     def flush(self):
         size = len(flood_protect.irc_queue)
         flood_protect.__init__()
