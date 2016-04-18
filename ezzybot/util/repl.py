@@ -1,7 +1,9 @@
 import code, sys
 
 class Repl(code.InteractiveConsole):
-    def __init__(self, items={}):
+    def __init__(self, items=None):
+        if items is None:
+            items = {}
         code.InteractiveConsole.__init__(self, items)
         self._buffer = ""
     def write(self, data):
