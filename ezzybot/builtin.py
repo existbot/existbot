@@ -1,23 +1,53 @@
 from .util import hook, colours, repl, other
 from . import logging, limit
 import socks, re, json, traceback, time, os, glob, importlib, requests, pkg_resources
+events = []
 def help_bot(conn=None, info=None):
+    """Shows help for commands"""
     #conn.bot.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
     for fullcommand, command in conn.bot.commands.items():
         if command["commandname"] == info.args.lstrip():
             conn.notice(info.nick, " {0} : {1}".format(fullcommand, command['help']))
             #conn.msg(info['channel'], command['help'])
             
+setattr(help_bot, "_commandname", "help")
+setattr(help_bot, "_prefix", "!")
+setattr(help_bot, "_help", help_bot.__doc__)
+setattr(help_bot, "_perms", "all")
+setattr(help_bot, "_event", "command")
+setattr(help_bot, "_thread", False)
+events.append(help_bot)
+
+
 def list_bot(conn=None, info=None):
-    return " ".join([conn.bot.commands[command]["commandname"] for command in conn.bot.commands.keys()])
+    return " ".join([func._commandname for func in conn.bot.events if func._event == "command"])
+    
+setattr(list_bot, "_commandname", "list")
+setattr(list_bot, "_prefix", "!")
+setattr(list_bot, "_help", list_bot.__doc__)
+setattr(list_bot, "_perms", "all")
+setattr(list_bot, "_event", "command")
+setattr(list_bot, "_thread", False)
+events.append(list_bot)
     
 def bot_quit(conn, info):
     conn.quit()
+    
+setattr(bot_quit, "_commandname", "quit")
+setattr(bot_quit, "_prefix", "!")
+setattr(bot_quit, "_help", bot_quit.__doc__)
+setattr(bot_quit, "_perms", ["admin"])
+setattr(bot_quit, "_event", "command")
+setattr(bot_quit, "_thread", False)
+events.append(bot_quit)
+    
 def flush(conn, info):
     return "Sucessfully flushed {0} lines.".format(conn.flush())
 
-commands = {}
-commands["!help"] = {"function": help_bot, "help": "This command.", "prefix": "!", "commandname": "help", "perms": "all", "requires": []}
-commands["!quit"] = {"function": bot_quit, "help": "Forces the bot :to quit", "prefix":"!", "commandname": "quit", "perms":["admin"], "requires": []}
-commands["!list"] = {"function": list_bot, "help":"list : lists all commands", "prefix": "!", "commandname": "list", "perms": "all", "requires": []}
-commands["!flush"] = {"function": flush, "help": "Flushes queue", "prefix":"!", "commandname": "flush", "perms":["admin"], "requires": []}
+setattr(flush, "_commandname", "flush")
+setattr(flush, "_prefix", "!")
+setattr(flush, "_help", flush.__doc__)
+setattr(flush, "_perms", ["admin"])
+setattr(flush, "_event", "command")
+setattr(flush, "_thread", False)
+events.append(flush)

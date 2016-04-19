@@ -17,6 +17,6 @@ class Repl(code.InteractiveConsole):
         return result
     def showtraceback(self):
         exc_type, value, lasttb = sys.exc_info()
-        return "{0}: {1}".format(exc_type.__name__, value)
+        self._buffer+="{0}: {1}".format(exc_type.__name__, value)
     def showsyntaxerror(self, filename):
-        return self.showtraceback()
+        self.showtraceback()

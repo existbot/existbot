@@ -67,17 +67,12 @@ class flood_protect_class(object):
 flood_protect = flood_protect_class()
 
 class connection_wrapper(object):
-    def __init__(self, connection, config, flood_protection, bot_class, requires):
+    def __init__(self, connection, config, flood_protection, bot_class):
         self.irc=connection
         self.flood_protection = flood_protection
         self.config = config
         self.db = thingdb.thing
         self.bot=bot_class
-        #self.r = require_class(requires)
-        requirements = {}
-        for require in requires:
-            requirements[require] = importlib.import_module(require)
-        self.r = other.toClass(requirements)
     def send(self, raw):
         if not self.flood_protection:
             self.irc.send("{0}\r\n".format(raw).encode("UTF-8"))
@@ -109,6 +104,8 @@ class connection_wrapper(object):
         size = len(flood_protect.irc_queue)
         flood_protect.__init__()
         return str(size)
+    def ping(self): 
+        self.irc.send("PONG :pingis\n".encode('utf-8'))
     def part(self,chan):
         self.send("PART {0}".format(chan))
     def nick(self,nick):
