@@ -28,7 +28,7 @@ def trigger(func=None, **kwargs):
     
 def regex(func=None, **kwargs):
     def wrapper(func):
-        func._trigger = kwargs.get("regex")
+        func._regex = kwargs.get("regex")
         func._event = "regex"
         if not hasattr(func, '_thread'):
         	func._thread = False
