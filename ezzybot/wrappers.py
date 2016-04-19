@@ -123,7 +123,7 @@ class connection_wrapper(object):
         user = user.replace(" ","").replace(":","")
         self.send("KICK " + channel + " " + user+ " :" + message)
     def op(self,channel,nick):
-        self.send("MODE {0} +o {1}\".format(channel,nick).encode('utf-8'))
+        self.send("MODE {0} +o {1}".format(channel,nick).encode('utf-8'))
     def deop(self,channel,nick):
         self.send("MODE {0} -o {1}".format(channel,nick).encode('utf-8'))
     def ban(self,channel,nick):
