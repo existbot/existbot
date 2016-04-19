@@ -1,4 +1,4 @@
-import inspect
+import inspect, collections
 
 commands = {}
 regexs = []
@@ -18,7 +18,7 @@ def command(arg=None, **kwargs):
         if not args["prefix"]+args["commandname"] in commands.keys():
             commands[args["prefix"]+args["commandname"]] = args
         return func
-    if callable(arg):
+    if isinstance(arg, collections.Callable):
         return command_wrapper(arg)
     return command_wrapper
     
@@ -31,7 +31,7 @@ def regex(arg=None, **kwargs):
         if args not in regexs:
             regexs.append(args)
         return func
-    if callable(arg):
+    if isinstance(arg, collections.Callable):
         return command_wrapper(arg)
     return command_wrapper
     
@@ -45,7 +45,7 @@ def trigger(arg=None, **kwargs):
         if args not in triggers:
             triggers.append(args)
         return func
-    if callable(arg):
+    if isinstance(arg, collections.Callable):
         return command_wrapper(arg)
     return command_wrapper
 

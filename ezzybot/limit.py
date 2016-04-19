@@ -1,5 +1,5 @@
-from util import bucket as tokenbucket
-import wrappers
+from .util import bucket as tokenbucket
+from . import wrappers
 
 
 class Limit(object):

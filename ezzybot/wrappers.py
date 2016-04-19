@@ -2,7 +2,7 @@ import thingdb
 from fnmatch import fnmatch
 from threading import Thread
 from time import sleep
-from util import other
+from .util import other
 import sys
 import importlib
 log=None
@@ -80,9 +80,9 @@ class connection_wrapper(object):
         self.r = other.toClass(requirements)
     def send(self, raw):
         if not self.flood_protection:
-            self.irc.send("{0}\r\n".format(raw))#.encode("UTF-8"))
+            self.irc.send("{0}\r\n".format(raw).encode("UTF-8"))
         else:
-            flood_protect.queue_add(self.irc, "{0}\r\n".format(raw))#.encode("UTF-8"))
+            flood_protect.queue_add(self.irc, "{0}\r\n".format(raw).encode("UTF-8"))
     def msg(self, channel, message):
         #self.send("PRIVMSG {} :{}".format(channel, message))
         if channel is not None:
