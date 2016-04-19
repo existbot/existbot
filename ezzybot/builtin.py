@@ -1,6 +1,7 @@
 from .util import hook, colours, repl, other
 from . import logging, limit
 import socks, re, json, traceback, time, os, glob, importlib, requests, pkg_resources
+events = []
 def help_bot(conn=None, info=None):
     """Shows help for commands"""
     #conn.bot.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
