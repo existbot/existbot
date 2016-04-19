@@ -1,14 +1,13 @@
 #EzzyBot 2016
 #Created by zz & Bowserinator & BWBellairs & IndigoTiger (freenode @ #ezzybot)
-import socks, re, traceback, time, socket, os, glob, importlib, requests, pkg_resources, json
+import socks, re, traceback, time, socket, os, glob, importlib, requests, pkg_resources, json, sys
 import ssl as securesl
-import logging, wrappers, limit
+from . import logging, wrappers, limit, builtin
 from time import sleep
 from threading import Thread
 from base64 import b64encode
-from util import hook, colours, repl, other
+from .util import hook, colours, repl, other
 #from importlib import reload
-import builtin
 
 
 class systemExit(Exception):
@@ -43,7 +42,7 @@ class bot(object):
                     plugins["plugins."+i.split("/")[-2]] = plugin
         self.__init__()
         hook.events = []
-        for pluginname, plugin in plugins.iteritems():
+        for pluginname, plugin in plugins.items():
             globals()[pluginname] = reload(plugin)
         self.log.debug("Plugins sucessfully imported", info.channel)
         self.events = hook.events
@@ -71,7 +70,7 @@ class bot(object):
             data {String} -- [description]
         """
         log.send(data)
-        self.irc.send("{}\r\n".format(data))
+        self.irc.send("{0}\r\n".format(data).encode("UTF-8"))
     def sendmsg(self, chan, msg):
         """sendmsg("#ezzybot", "Hi!")
         
@@ -81,10 +80,13 @@ class bot(object):
             chan {String} -- IRC Channel
             msg {String} -- Message to be sent
         """
-        self.irc.send("PRIVMSG {0} :{1}\n".format(chan, msg))#.encode('utf-8'))
+        self.send("PRIVMSG {0} :{1}".format(chan, msg))
     def fifo(self):
         while True:
-            got_message = raw_input("")
+            if sys.version_info >= (3,0):
+                got_message = input("")
+            else:
+                got_message = raw_input("")
             self.send(got_message) # input() for py 3
     def printrecv(self):
         """printrecv()
@@ -104,6 +106,7 @@ class bot(object):
         self.data = ""
         while not self.part.endswith("\r\n"):
             self.part = self.irc.recv(2048)
+            self.part = self.part.decode("UTF-8")
             #part = part
             self.data += self.part
         self.data = self.data.splitlines()
@@ -123,15 +126,15 @@ class bot(object):
             self.output =function(info=info, conn=plugin_wrapper)
             if self.output != None:
                 if channel.startswith("#"):
-                    plugin_wrapper.msg(channel,"[{}] {}".format(info.nick, str(self.output)))
+                    plugin_wrapper.msg(channel,"[{0}] {1}".format(info.nick, str(self.output)))
                 else:
                     plugin_wrapper.msg(info.nick,"| "+str(self.output))
                 #plugin_wrapper.msg(channel,"| "+str(self.output))
         except Exception as e:
             traceback.print_exc()
-            self.log.error(self.colours.VIOLET+"Caused by {}, using command '{}' in {}".format(info.mask, info.message, info.channel))
+            self.log.error(self.colours.VIOLET+"Caused by {0}, using command '{1}' in {2}".format(info.mask, info.message, info.channel))
             if channel != self.config_log_channel:
-                plugin_wrapper.msg(channel, self.colours.RED+"Error! See {} for more info.".format(self.config_log_channel))
+                plugin_wrapper.msg(channel, self.colours.RED+"Error! See {0} for more info.".format(self.config_log_channel))
             for line in str(e).split("\n"):
                 self.log.error("[{0}] {1}".format(type(e).__name__, line))
     def run_trigger(self, function, plugin_wrapper, info):
@@ -147,7 +150,7 @@ class bot(object):
         try:
             function(info=info, conn=plugin_wrapper)
         except Exception as e:
-            self.log.error(self.colours.VIOLET+"Caused by {}".format(info.raw))
+            self.log.error(self.colours.VIOLET+"Caused by {0}".format(info.raw))
             for line in str(e).split("\n"):
                 self.log.error(line)
     def confirmsasl(self):
@@ -173,8 +176,8 @@ class bot(object):
                 self.t = irc_msg.split()
                 #:zz!Zc-zz@mixtape.zzirc.xyz PRIVMSG #ezzybot :test
                 if self.t[0] == "PING":
-                    self.send("PONG {}".format(" ".join(self.t[1:])))
-                if self.t[1] == "PRIVMSG":
+                    self.send("PONG {0}".format(" ".join(self.t[1:])))
+                if self.t[1] == "PRIVMSG" and self.commands != {}:
                     self.ircmsg = self.irc_msg
                     self.nick = self.ircmsg.split("!")[0]
                     self.channel = self.ircmsg.split(' PRIVMSG ')[-1].split(' :')[0]
@@ -340,41 +343,40 @@ class bot(object):
             saslstring = b64encode("{0}\x00{0}\x00{1}".format(
                             self.config_auth_user, self.config_auth_pass).encode("UTF-8"))
             saslstring = saslstring.decode("UTF-8")
-            self.send("CAP REQ :sasl".encode("UTF-8"))
-            self.send("AUTHENTICATE PLAIN".encode("UTF-8"))
-            self.send("AUTHENTICATE {0}".format(saslstring).encode(
-                    "UTF-8"))
+            self.send("CAP REQ :sasl")
+            self.send("AUTHENTICATE PLAIN")
+            self.send("AUTHENTICATE {0}".format(saslstring))
             authed = self.confirmsasl()
             #authed = True
             if authed:
-                self.send("CAP END".encode("UTF-8"))
-                self.send("NICK {}".format(self.config_nick))
-                self.send("USER {} * * :{}".format(self.config_ident, self.config_realname))
+                self.send("CAP END")
+                self.send("NICK {0}".format(self.config_nick))
+                self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
             else:
                 log.error("[ERROR] SASL aborted. exiting.")
-                self.send("QUIT :[ERROR] SASL aborted".encode("UTF-8"))
+                self.send("QUIT :[ERROR] SASL aborted")
                 raise systemExit()
 
         else:
-            self.send("NICK {}".format(self.config_nick))
-            self.send("USER {} * * :{}".format(self.config_ident, self.config_realname))
+            self.send("NICK {0}".format(self.config_nick))
+            self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
             if self.config_do_auth:
-                self.irc.send("PRIVMSG nickserv :identify {0} {1}\r\n".format(
-                        self.config_auth_user, self.config_auth_pass).encode("UTF-8"))
+                self.sendmsg("NickServ", "IDENTIFY {0} {1}".format(
+                        self.config_auth_user, self.config_auth_pass))
         sleep(5)
-        self.send("JOIN {}".format(",".join(self.config_channels)))
+        self.send("JOIN {0}".format(",".join(self.config_channels)))
         
         self.repl = repl.Repl({"conn": wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self)})
         self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
         try:
             if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
-                log.debug("New version of ezzybot ({}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest))) # dev build support?
+                log.debug("New version of ezzybot ({0}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest))) # dev build support?
         except:
             log.error("Checking ezzybot's version failed.")
         try:
             self.loop()
         except KeyboardInterrupt:
-            self.send("QUIT :{}".format(self.config_quit_message)) # send automatically does log.send
+            self.send("QUIT :{0}".format(self.config_quit_message)) # send automatically does log.send
             self.irc.close()
         except:
             traceback.print_exc()

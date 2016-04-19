@@ -1,3 +1,4 @@
+import collections
 events = []
 
 def command(func=None, **kwargs):
@@ -10,7 +11,7 @@ def command(func=None, **kwargs):
         if not hasattr(func, '_thread'):
         	func._thread = False
         events.append(func)
-    if callable(func):
+    if isinstance(func, collections.Callable):
         return wrapper(func)
     return wrapper
     
@@ -21,7 +22,7 @@ def trigger(func=None, **kwargs):
         if not hasattr(func, '_thread'):
         	func._thread = False
         events.append(func)
-    if callable(func):
+    if isinstance(func, collections.Callable):
         return wrapper(func)
     return wrapper
     
@@ -32,10 +33,10 @@ def regex(func=None, **kwargs):
         if not hasattr(func, '_thread'):
         	func._thread = False
         events.append(func)
-    if callable(func):
+    if isinstance(func, collections.Callable):
         return wrapper(func)
     return wrapper
-    
+
 def singlethread(func):
     func._thread = True
     return func
