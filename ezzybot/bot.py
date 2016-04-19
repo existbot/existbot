@@ -179,7 +179,7 @@ class bot(object):
                 #:zz!Zc-zz@mixtape.zzirc.xyz PRIVMSG #ezzybot :test
                 if self.t[0] == "PING":
                     self.send("PONG {0}".format(" ".join(self.t[1:])))
-                if self.t[1] == "PRIVMSG" and self.commands != {}:
+                if self.t[1] == "PRIVMSG":
                     self.ircmsg = self.irc_msg
                     self.nick = self.ircmsg.split("!")[0]
                     self.channel = self.ircmsg.split(' PRIVMSG ')[-1].split(' :')[0]
