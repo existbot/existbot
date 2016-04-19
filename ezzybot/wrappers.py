@@ -107,33 +107,33 @@ class connection_wrapper(object):
     def ping(self): 
         self.irc.send("PONG :pingis\n".encode('utf-8'))
     def part(self,chan):
-        self.irc.send("PART {0}\n".format(chan).encode('utf-8'))
+        self.send("PART {0}".format(chan).encode('utf-8'))
     def nick(self,nick):
-        self.irc.send("NICK {0}\n".format(nick).encode('utf-8'))
+        self.send("NICK {0}".format(nick).encode('utf-8'))
     def join(self,chan):  
-        self.irc.send("JOIN {0}\n".format(chan).encode('utf-8'))
+        self.send("JOIN {0}".format(chan).encode('utf-8'))
     def invite(self, chan, user):
-        self.irc.send("INVITE {} {}\n".format(user, chan).encode("utf-8"))
+        self.send("INVITE {} {}".format(user, chan).encode("utf-8"))
     def action(self,channel,message):
         self.sendmsg(channel,"\x01ACTION " + message + "\x01")
     def kick(self,channel,user,message):
         user = user.replace(" ","").replace(":","")
-        self.irc.send("KICK " + channel + " " + user+ " :" + message +"\r\n")
+        self.send("KICK " + channel + " " + user+ " :" + message)
     def op(self,channel,nick):
-        self.irc.send("MODE {0} +o {1}\n".format(channel,nick).encode('utf-8'))
+        self.send("MODE {0} +o {1}\".format(channel,nick).encode('utf-8'))
     def deop(self,channel,nick):
-        self.irc.send("MODE {0} -o {1}\n".format(channel,nick).encode('utf-8'))
+        self.send("MODE {0} -o {1}".format(channel,nick).encode('utf-8'))
     def ban(self,channel,nick):
-        self.irc.send("MODE {0} +b {1}\n".format(channel,nick).encode('utf-8'))
+        self.send("MODE {0} +b {1}".format(channel,nick).encode('utf-8'))
     def unban(self,channel,nick):
-        self.irc.send("MODE {0} -b {1}\n".format(channel,nick).encode('utf-8'))
+        self.send("MODE {0} -b {1}".format(channel,nick).encode('utf-8'))
     def quiet(self,channel,nick):
-        self.irc.send("MODE {0} +q {1}\n".format(channel,nick).encode('utf-8'))
+        self.send("MODE {0} +q {1}".format(channel,nick).encode('utf-8'))
     def unquiet(self,channel,nick):
-        self.irc.send("MODE {0} -q {1}\n".format(channel,nick).encode('utf-8'))
+        self.send("MODE {0} -q {1}".format(channel,nick).encode('utf-8'))
     def unvoice(self,channel,nick):
-        self.irc.send("MODE {0} -v {1}\n".format(channel,nick).encode('utf-8'))
+        self.send("MODE {0} -v {1}".format(channel,nick).encode('utf-8'))
     def voice(self,channel,nick):
-        self.irc.send("MODE {0} +v {1}\n".format(channel,nick).encode('utf-8'))
+        self.send("MODE {0} +v {1}".format(channel,nick).encode('utf-8'))
     def mode(self,channel,nick,mode):
-        self.irc.send("MODE {0} {1} {2}\n".format(channel,mode,nick).encode('utf-8'))
+        self.send("MODE {0} {1} {2}".format(channel,mode,nick).encode('utf-8'))
