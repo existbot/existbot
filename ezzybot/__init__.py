@@ -1,14 +1,13 @@
 #EzzyBot 2016
 #Created by zz & Bowserinator & BWBellairs & IndigoTiger (freenode @ #ezzybot)
-import socks, re, traceback, time, socket, os, glob, importlib, requests, pkg_resources, json
+import socks, re, traceback, time, socket, os, glob, importlib, requests, pkg_resources, json, sys
 import ssl as securesl
-import logging, wrappers, limit
+from . import logging, wrappers, limit, builtin
 from time import sleep
 from threading import Thread
 from base64 import b64encode
-from util import hook, colours, repl, other
+from .util import hook, colours, repl, other
 #from importlib import reload
-import builtin
 
 
 class systemExit(Exception):
@@ -42,8 +41,10 @@ class bot(object):
                     plugin = importlib.import_module("plugins."+i.split("/")[-2])
                     plugins["plugins."+i.split("/")[-2]] = plugin
         self.__init__()
-        hook.events = []
-        for pluginname, plugin in plugins.iteritems():
+        hook.commands = {}
+        hook.regexs = []
+        hook.triggers = []
+        for pluginname, plugin in plugins.items():
             globals()[pluginname] = reload(plugin)
         self.log.debug("Plugins sucessfully imported", info.channel)
         self.events = hook.events
@@ -71,7 +72,7 @@ class bot(object):
             data {String} -- [description]
         """
         log.send(data)
-        self.irc.send("{0}\r\n".format(data))
+        self.irc.send("{0}\r\n".format(data).encode("UTF-8"))
     def sendmsg(self, chan, msg):
         """sendmsg("#ezzybot", "Hi!")
         
@@ -81,10 +82,13 @@ class bot(object):
             chan {String} -- IRC Channel
             msg {String} -- Message to be sent
         """
-        self.irc.send("PRIVMSG {0} :{1}\n".format(chan, msg))#.encode('utf-8'))
+        self.send("PRIVMSG {0} :{1}".format(chan, msg))
     def fifo(self):
         while True:
-            got_message = raw_input("")
+            if sys.version_info >= (3,0):
+                got_message = input("")
+            else:
+                got_message = raw_input("")
             self.send(got_message) # input() for py 3
     def printrecv(self):
         """printrecv()
@@ -104,6 +108,7 @@ class bot(object):
         self.data = ""
         while not self.part.endswith("\r\n"):
             self.part = self.irc.recv(2048)
+            self.part = self.part.decode("UTF-8")
             #part = part
             self.data += self.part
         self.data = self.data.splitlines()
@@ -340,27 +345,26 @@ class bot(object):
             saslstring = b64encode("{0}\x00{0}\x00{1}".format(
                             self.config_auth_user, self.config_auth_pass).encode("UTF-8"))
             saslstring = saslstring.decode("UTF-8")
-            self.send("CAP REQ :sasl".encode("UTF-8"))
-            self.send("AUTHENTICATE PLAIN".encode("UTF-8"))
-            self.send("AUTHENTICATE {0}".format(saslstring).encode(
-                    "UTF-8"))
+            self.send("CAP REQ :sasl")
+            self.send("AUTHENTICATE PLAIN")
+            self.send("AUTHENTICATE {0}".format(saslstring))
             authed = self.confirmsasl()
             #authed = True
             if authed:
-                self.send("CAP END".encode("UTF-8"))
+                self.send("CAP END")
                 self.send("NICK {0}".format(self.config_nick))
                 self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
             else:
                 log.error("[ERROR] SASL aborted. exiting.")
-                self.send("QUIT :[ERROR] SASL aborted".encode("UTF-8"))
+                self.send("QUIT :[ERROR] SASL aborted")
                 raise systemExit()
 
         else:
             self.send("NICK {0}".format(self.config_nick))
             self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
             if self.config_do_auth:
-                self.irc.send("PRIVMSG nickserv :identify {0} {1}\r\n".format(
-                        self.config_auth_user, self.config_auth_pass).encode("UTF-8"))
+                self.sendmsg("NickServ", "IDENTIFY {0} {1}".format(
+                        self.config_auth_user, self.config_auth_pass))
         sleep(5)
         self.send("JOIN {0}".format(",".join(self.config_channels)))
         
