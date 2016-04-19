@@ -1,27 +1,13 @@
-<<<<<<< HEAD
-from util import hook, repl, other
-import limit
-import socks, re, json, traceback, time, os, glob, requests, pkg_resources
-events = []
-
-
-=======
 from .util import hook, colours, repl, other
 from . import logging, limit
 import socks, re, json, traceback, time, os, glob, importlib, requests, pkg_resources
->>>>>>> upstream/master
+events = []
 def help_bot(conn=None, info=None):
     """Shows help for commands"""
     #conn.bot.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
-<<<<<<< HEAD
-    for func in [func for func in conn.bot.events if func._event == "command"]:
-        if func._commandname == info.args.lstrip():
-            conn.notice(info.nick, " {} : {}".format(func._prefix+func._commandname, func._help))
-=======
     for fullcommand, command in conn.bot.commands.items():
         if command["commandname"] == info.args.lstrip():
             conn.notice(info.nick, " {0} : {1}".format(fullcommand, command['help']))
->>>>>>> upstream/master
             #conn.msg(info['channel'], command['help'])
             
 setattr(help_bot, "_commandname", "help")
