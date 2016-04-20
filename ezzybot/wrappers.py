@@ -113,7 +113,7 @@ class connection_wrapper(object):
     def join(self,chan):  
         self.send("JOIN {0}".format(chan))
     def invite(self, chan, user):
-        self.send("INVITE {} {}".format(user, chan))
+        self.send("INVITE {0} {1}".format(user, chan))
     def action(self,channel,message):
         self.sendmsg(channel,"\x01ACTION " + message + "\x01")
     def kick(self,channel,user,message):
