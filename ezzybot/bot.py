@@ -62,7 +62,8 @@ class bot(object):
         """
         self.mtimes = {}
         self.events = builtin.events
-        self.events.append(self.reload_bot)
+        if self.reload_bot not in self.events:
+            self.events.append(self.reload_bot)
     def send(self, data):
         """send("PRIVMSG #ezzybot :Hi")
         
