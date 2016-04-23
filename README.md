@@ -28,7 +28,6 @@ Developer Links:
 Devs are:
 * zz
 * BWBellairs
-* Bowserinator
 * IndigoTiger
 
 Wanna know more? (IRC) Freenode: #ezzybot

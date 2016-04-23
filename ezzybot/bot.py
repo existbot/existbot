@@ -1,5 +1,5 @@
 #EzzyBot 2016
-#Created by zz & Bowserinator & BWBellairs & IndigoTiger (freenode @ #ezzybot)
+#Created by zz & BWBellairs & IndigoTiger (freenode @ #ezzybot)
 import socks, re, traceback, time, socket, os, glob, importlib, requests, pkg_resources, json, sys
 import ssl as securesl
 from . import logging, wrappers, limit, builtin
