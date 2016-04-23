@@ -1,7 +1,9 @@
 from .util import hook, colours, repl, other
 from . import logging, limit
 import socks, re, json, traceback, time, os, glob, importlib, requests, pkg_resources
+
 events = []
+
 def help_bot(conn=None, info=None):
     """Shows help for commands"""
     #conn.bot.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
@@ -9,7 +11,7 @@ def help_bot(conn=None, info=None):
         if command["commandname"] == info.args.lstrip():
             conn.notice(info.nick, " {0} : {1}".format(fullcommand, command['help']))
             #conn.msg(info['channel'], command['help'])
-            
+
 setattr(help_bot, "_commandname", "help")
 setattr(help_bot, "_prefix", "!")
 setattr(help_bot, "_help", help_bot.__doc__)
@@ -18,10 +20,9 @@ setattr(help_bot, "_event", "command")
 setattr(help_bot, "_thread", False)
 events.append(help_bot)
 
-
 def list_bot(conn=None, info=None):
     return " ".join([func._commandname for func in conn.bot.events if func._event == "command"])
-    
+
 setattr(list_bot, "_commandname", "list")
 setattr(list_bot, "_prefix", "!")
 setattr(list_bot, "_help", list_bot.__doc__)
@@ -29,10 +30,10 @@ setattr(list_bot, "_perms", "all")
 setattr(list_bot, "_event", "command")
 setattr(list_bot, "_thread", False)
 events.append(list_bot)
-    
+
 def bot_quit(conn, info):
     conn.quit()
-    
+
 setattr(bot_quit, "_commandname", "quit")
 setattr(bot_quit, "_prefix", "!")
 setattr(bot_quit, "_help", bot_quit.__doc__)
@@ -40,7 +41,7 @@ setattr(bot_quit, "_perms", ["admin"])
 setattr(bot_quit, "_event", "command")
 setattr(bot_quit, "_thread", False)
 events.append(bot_quit)
-    
+
 def flush(conn, info):
     return "Sucessfully flushed {0} lines.".format(conn.flush())
 
