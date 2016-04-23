@@ -9,18 +9,18 @@ from base64 import b64encode
 from .util import hook, colours, repl, other
 #from importlib import reload
 
-
 class systemExit(Exception):
     pass
 
 class bot(object):
     """ezzybot.bot()
-    
+
     Creates a EzzyBot instance.
     """
+
     def importPlugins(self):
         """importPlugins
-        
+
         Imports plugins from plugins/ folder
         """
         result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
@@ -31,6 +31,7 @@ class bot(object):
                     plugin = importlib.import_module("plugins."+i.split("/")[-2])
                     globals()["plugins."+i.split("/")[-2]] = plugin
             self.mtimes[i] = os.path.getmtime(i)
+
     def reload_bot(self,info, conn):
         self.log.debug("Attemping Reload...", info.channel)
         result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
@@ -55,35 +56,39 @@ class bot(object):
     reload_bot._perms = ["admin"]
     reload_bot._event = "command"
     reload_bot._thread = False
+
     def __init__(self):
         """Initalizes bot() object
-        
+
         Set's builtin commands and creates empty triggers and regex lists
         """
         self.mtimes = {}
         self.events = builtin.events
         if self.reload_bot not in self.events:
             self.events.append(self.reload_bot)
+
     def send(self, data):
         """send("PRIVMSG #ezzybot :Hi")
-        
+
         Sends data out to the working connection and log.
-        
+
         Arguments:
             data {String} -- [description]
         """
         log.send(data)
         self.irc.send("{0}\r\n".format(data).encode("UTF-8"))
+
     def sendmsg(self, chan, msg):
         """sendmsg("#ezzybot", "Hi!")
-        
+
         Sends a PRIVMSG to the working connection.
-        
+
         Arguments:
             chan {String} -- IRC Channel
             msg {String} -- Message to be sent
         """
         self.send("PRIVMSG {0} :{1}".format(chan, msg))
+
     def fifo(self):
         while True:
             if sys.version_info >= (3,0):
@@ -91,18 +96,20 @@ class bot(object):
             else:
                 got_message = raw_input("")
             self.send(got_message) # input() for py 3
+
     def printrecv(self):
         """printrecv()
-        
+
         Recieves data from working connection and prints it.
         """
         self.ircmsg = self.recv()
         for line in self.ircmsg:
             log.receive(line)
         return self.ircmsg
+
     def recv(self):
         """recv()
-        
+
         Recieves data from working connection and returns it.
         """
         self.part = ""
@@ -114,11 +121,12 @@ class bot(object):
             self.data += self.part
         self.data = self.data.splitlines()
         return self.data
+
     def run_plugin(self, function, plugin_wrapper, channel, info):
         """run_plugin(hello, plugin_wrapper, channel, info)
-        
+
         Runs function and prints result/error to irc.
-        
+
         Arguments:
             function {Function} -- Plugin function
             plugin_wrapper {Object} -- ezzybot.wrappers.connection_wrapper object
@@ -140,11 +148,12 @@ class bot(object):
                 plugin_wrapper.msg(channel, self.colours.RED+"Error! See {0} for more info.".format(self.config_log_channel))
             for line in str(e).split("\n"):
                 self.log.error("[{0}] {1}".format(type(e).__name__, line))
+
     def run_trigger(self, function, plugin_wrapper, info):
         """run_trigger(hello, plugin_wrapper, info)
-        
+
         Runs trigger and messages errors.
-        
+
         Arguments:
             function {Function} -- Plugin function
             plugin_wrapper {Object} -- ezzybot.wrappers.connection_wrapper object
@@ -156,21 +165,23 @@ class bot(object):
             self.log.error(self.colours.VIOLET+"Caused by {0}".format(info.raw))
             for line in str(e).split("\n"):
                 self.log.error(line)
+
     def confirmsasl(self):
         """confirmsasl()
-        
+
         Waits until SASL has succeeded or not.
-        
+
         Returns:
             bool -- Weather SASL has succeeded or not.
         """
         while True:
             received = " ".join(self.printrecv())
             auth_msgs = [":SASL authentication successful", ":SASL authentication failed", ":SASL authentication aborted"]
-            if auth_msgs[0] in received: 
+            if auth_msgs[0] in received:
                 return True
             elif auth_msgs[1] in received or auth_msgs[2] in received:
                 return False
+
     def loop(self):
         while True:
             self.msg = self.printrecv()
@@ -260,11 +271,12 @@ class bot(object):
                                 trigger_thread.start()
                             else:
                                 self.run_trigger(func, self.plugin_wrapper,self.info)
+
     def run(self, config):
         """run({'nick': 'EzzyBot'})
-        
+
         Runs Ezzybot
-        
+
         Arguments:
             config {Dict} -- The config
         """
@@ -279,7 +291,7 @@ class bot(object):
         self.config_auth_pass = config.get("auth_pass") or None
         self.config_auth_user = config.get("auth_user") or None
         self.config_nick = config.get("nick") or "EzzyBot"
-        self.config_ident = config.get("indent") or "EzzyBot"
+        self.config_ident = config.get("ident") or "EzzyBot"
         self.config_realname = config.get("realname") or "EzzyBot: a simple python framework for IRC bots."
         self.config_channels = config.get("channels") or ["#EzzyBot"]
         self.config_analytics = config.get("analytics") or True
@@ -299,21 +311,21 @@ class bot(object):
         self.config_command_limiting_restore_rate = config.get("command_limiting_restore_rate") or 0.13
         self.config_limit_override = config.get("limit_override") or ["admin", "dev"]
         self.add_devs = config.get("add_devs") or False
-        
+
         self.shared_dict = {}
-        
+
         #load dev list
         if self.add_devs:
             devs = json.loads(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
             self.config_permissions['dev'] = devs
         #get latest version on pypi
         self.latest = requests.get("https://pypi.python.org/pypi/ezzybot/json").json()['info']['version']
-        
+
         if self.config_fifo:
             self.fifo_thread = Thread(target=self.fifo)
             self.fifo_thread.setDaemon(True)
             self.fifo_thread.start()
-        
+
         self.colours = colours.colours()
         self.colors = self.colours
         if self.config_proxy:
@@ -368,7 +380,7 @@ class bot(object):
                         self.config_auth_user, self.config_auth_pass))
         sleep(5)
         self.send("JOIN {0}".format(",".join(self.config_channels)))
-        
+
         self.repl = repl.Repl({"conn": wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self)})
         self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
         try:

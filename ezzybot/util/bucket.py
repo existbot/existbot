@@ -3,13 +3,14 @@ from time import time
 
 class TokenBucket(object):
     """An implementation of the token bucket algorithm.
-    
+
     >>> bucket = TokenBucket(80, 0.5)
     >>> print bucket.consume(10)
     True
     >>> print bucket.consume(90)
     False
     """
+
     def __init__(self, tokens, fill_rate):
         """tokens is the total tokens in the bucket. fill_rate is the
         rate in tokens/second that the bucket will be refilled."""

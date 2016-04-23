@@ -1,4 +1,5 @@
 class colours(object):
+
     def __init__(self):
         self.WHITE = "\x030"
         self.BLACK = "\x031"
@@ -16,8 +17,8 @@ class colours(object):
         self.VIOLET = "\x0313"
         self.DARKGRAY = "\x0314"
         self.LIGHTGRAY = "\x0315"
-         
+
         self.BOLD = "\x02"
-        self.ITALIC = "\x09"    
-        self.RESET = "\x0f"  
+        self.ITALIC = "\x09"
+        self.RESET = "\x0f"
         self.UNDERLINE = "\x15"

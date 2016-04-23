@@ -1,4 +1,5 @@
 import collections
+
 events = []
 
 def command(func=None, **kwargs):
@@ -14,7 +15,7 @@ def command(func=None, **kwargs):
     if isinstance(func, collections.Callable):
         return wrapper(func)
     return wrapper
-    
+
 def trigger(func=None, **kwargs):
     def wrapper(func):
         func._trigger = kwargs.get("trigger", "PRIVMSG")
@@ -25,7 +26,7 @@ def trigger(func=None, **kwargs):
     if isinstance(func, collections.Callable):
         return wrapper(func)
     return wrapper
-    
+
 def regex(func=None, **kwargs):
     def wrapper(func):
         func._regex = kwargs.get("regex")
