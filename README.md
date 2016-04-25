@@ -6,6 +6,7 @@ import ezzybot
 mybot = ezzybot.bot()
 
 config = {  
+   "nick":"EzzyBot",
    "channels":["#ezzybot", "#ezzybot-debug", "#ezzybot-bots"],
    "port":6667,
    "SSL":False,
