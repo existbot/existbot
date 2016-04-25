@@ -7,10 +7,9 @@ events = []
 def help_bot(conn=None, info=None):
     """Shows help for commands"""
     #conn.bot.send("PRIVMSG #ezzybot :{} {}".format(conn, info))
-    for fullcommand, command in conn.bot.commands.items():
-        if command["commandname"] == info.args.lstrip():
-            conn.notice(info.nick, " {0} : {1}".format(fullcommand, command['help']))
-            #conn.msg(info['channel'], command['help'])
+    for command in [func for func in conn.bot.events if func._event == "command"]:
+        if command._commandname == info.args.lstrip():
+            conn.notice(info.nick, command._help)
 
 setattr(help_bot, "_commandname", "help")
 setattr(help_bot, "_prefix", "!")
