@@ -5,7 +5,22 @@ from ezzybot import bot
 
 mybot = bot()
 
-mybot.run({"nick": "MyEzzyBot", "channels":["#ezzybot"], "host": "irc.freenode.net"})
+config = {  
+   "channels":["#ezzybot", "#ezzybot-debug", "#ezzybot-bots"],
+   "port":6667,
+   "SSL":False,
+   "SASL":True,
+   "do_auth": False,
+   "auth_user": "ezzybot",
+   "auth_pass": "<password>",
+   "quit_message":"Default quit reason",
+   "permissions": {
+       "admin": ["*!ident@host"]
+    },
+    "log_channel": "#ezzybot-debug"
+}
+
+mybot.run(config)
 ```
 
 Installation
