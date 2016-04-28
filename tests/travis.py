@@ -1,15 +1,11 @@
 #travis.py
-import ezzybot, threading, time
+import ezzybot, threading, time, sys
 mybot = ezzybot.bot()
-config = {"channels":["#ezzybot-debug"], "nick": "EzzyBot-Travis"}
-def runbot():
-    mybot.run(config)
-
-t = threading.Thread(target=runbot)
+config = {"channels":[], "nick": "EzzyBot-CI-"+str(sys.version.split(" ")[0].replace(".", "-"))}
+t = threading.Thread(target=mybot.run, args=(config,))
 t.daemon=True
 t.start()
 time.sleep(20)
-mybot.irc.send("PRIVMSG #ezzybot-debug :{0}Travis Testing script successful!\r\n".format(mybot.colours.CYAN).encode("UTF-8"))
-mybot.irc.send("PART #ezzybot-debug\r\n".encode("UTF-8"))
+mybot.log.debug("Testing script successful")
 time.sleep(1)
 exit()
