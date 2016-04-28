@@ -289,7 +289,7 @@ class bot(object):
         self.config_auth_pass = config.get("auth_pass", None)
         self.config_auth_user = config.get("auth_user", None)
         self.config_nick = config.get("nick", "EzzyBot")
-        self.config_ident = config.get("indent", "EzzyBot")
+        self.config_ident = config.get("ident", "EzzyBot")
         self.config_realname = config.get("realname", "EzzyBot: a simple python framework for IRC bots.")
         self.config_channels = config.get("channels", ["#EzzyBot"])
         self.config_analytics = config.get("analytics", True)
