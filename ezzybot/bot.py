@@ -3,8 +3,8 @@
 import socks, re, traceback, time, socket, os, glob, importlib, requests, pkg_resources, json, sys
 import ssl as securesl
 from . import logging, wrappers, limit, builtin
-from time import sleep
-from threading import Thread
+from time import sleep, time
+from threading import Thread, Timer
 from base64 import b64encode
 from .util import hook, colours, repl, other
 #from importlib import reload
@@ -179,7 +179,16 @@ class bot(object):
                 return True
             elif auth_msgs[1] in received or auth_msgs[2] in received:
                 return False
-
+    def ping(self):
+        now = time()
+        diff = now - self.last_ping
+        if diff > self.timeout:
+            self.send("QUIT :Lagging by {} seconds".format(str(diff)))
+        else:
+            self.send("PING :{}".format(now))
+            self.ping_timer = Timer(self.pingfreq, self.ping)
+            self.ping_timer.daemon = True
+            self.ping_timer.start()
     def loop(self):
         while True:
             self.msg = self.printrecv()
@@ -189,6 +198,8 @@ class bot(object):
                 #:zz!Zc-zz@mixtape.zzirc.xyz PRIVMSG #ezzybot :test
                 if self.t[0] == "PING":
                     self.send("PONG {0}".format(" ".join(self.t[1:])))
+                if self.t[1] == "PONG":
+                    self.last_ping = time()
                 if self.t[1] == "PRIVMSG":
                     self.ircmsg = self.irc_msg
                     self.nick = self.ircmsg.split("!")[0]
@@ -208,7 +219,7 @@ class bot(object):
                             permissions_wrapper = wrappers.permissions_class(self.config_permissions)
                             if permissions_wrapper.check(func._perms, self.mask) or func._perms == "all":
                                 if self.limit.command_limiter(info):
-                                    self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self)
+                                    self.plugin_wrapper=wrappers.connection_wrapper(self)
                                     if func._thread:
                                         plugin_thread= Thread(target=self.run_plugin, args=(func, self.plugin_wrapper,self.channel,self.info,))
                                         plugin_thread.setDaemon(True)
@@ -216,14 +227,14 @@ class bot(object):
                                     else:
                                         self.run_plugin(func, self.plugin_wrapper,self.channel,self.info)
                                 else:
-                                    self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self)
+                                    self.plugin_wrapper=wrappers.connection_wrapper(self)
                                     self.plugin_wrapper.notice(info.nick, "This command is rate limited, please try again later")
                 if self.t[1] in [func._trigger for func in self.events if func._event == "trigger"] or "*" in [func._trigger for func in self.events if func._event == "trigger"]:
                     for trigger in [func for func in self.events if func._event == "trigger"]:
                         if trigger._trigger == "*":
                             self.info = {"raw": irc_msg, "trigger": trigger._trigger, "split": irc_msg.split(" ")}
                             self.info = other.toClass(self.info)
-                            self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.flood_protection, self)
+                            self.plugin_wrapper=wrappers.connection_wrapper(self)
                             if trigger._thread:
                                 trigger_thread= Thread(target=self.run_trigger, args=(trigger, self.plugin_wrapper,self.info,))
                                 trigger_thread.setDaemon(True)
@@ -239,7 +250,7 @@ class bot(object):
                             self.message = self.irc_msg.split(" :",1)[1]
                             self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "raw": irc_msg}
                             self.info = other.toClass(self.info)
-                            self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self)
+                            self.plugin_wrapper=wrappers.connection_wrapper(self)
                             if trigger._thread:
                                 trigger_thread= Thread(target=self.run_trigger, args=(trigger, self.plugin_wrapper,self.info,))
                                 trigger_thread.setDaemon(True)
@@ -249,7 +260,7 @@ class bot(object):
                         elif trigger._trigger == self.t[1]:
                             self.info = {"raw": irc_msg, "trigger": trigger._trigger, "split": irc_msg.split(" ")}
                             self.info = other.toClass(self.info)
-                            self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self)
+                            self.plugin_wrapper=wrappers.connection_wrapper(self)
                             if trigger._thread:
                                 trigger_thread= Thread(target=self.run_trigger, args=(trigger, self.plugin_wrapper,self.info,))
                                 trigger_thread.setDaemon(True)
@@ -262,7 +273,7 @@ class bot(object):
                         if searched is not None:
                             self.info = {"raw": irc_msg, "regex": func._regex, "split": irc_msg.split(" "), "result": searched}
                             self.info = other.toClass(self.info)
-                            self.plugin_wrapper=wrappers.connection_wrapper(self.irc, self.config, self.config_flood_protection, self)
+                            self.plugin_wrapper=wrappers.connection_wrapper(self)
                             if func._thread:
                                 trigger_thread= Thread(target=self.run_trigger, args=(func, self.plugin_wrapper,self.info,))
                                 trigger_thread.setDaemon(True)
@@ -309,6 +320,12 @@ class bot(object):
         self.config_command_limiting_restore_rate = config.get("command_limiting_restore_rate", 0.13)
         self.config_limit_override = config.get("limit_override", ["admin", "dev"])
         self.add_devs = config.get("add_devs", False)
+        #Lag detection
+        self.last_ping = time()
+        self.pingfreq = 60
+        self.timeout = self.pingfreq * 2
+        self.ping_timer = Timer(self.pingfreq, self.ping)
+        self.ping_timer.daemon = True
 
         self.shared_dict = {}
 
@@ -337,7 +354,7 @@ class bot(object):
             self.irc = securesl.wrap_socket(self.sock)
         else:
             self.irc = self.sock
-        log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self))
+        log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self))
         result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
         for i in result:
             self.mtimes[i] = 0
@@ -379,13 +396,15 @@ class bot(object):
         sleep(5)
         self.send("JOIN {0}".format(",".join(self.config_channels)))
 
-        self.repl = repl.Repl({"conn": wrappers.connection_wrapper(self.irc, config, self.config_flood_protection, self)})
+        self.repl = repl.Repl({"conn": wrappers.connection_wrapper(self)})
         self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
         try:
             if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
                 log.debug("New version of ezzybot ({0}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest))) # dev build support?
         except:
             log.error("Checking ezzybot's version failed.")
+        sleep(1)
+        self.ping_timer.start()
         try:
             self.loop()
         except KeyboardInterrupt:
