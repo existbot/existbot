@@ -73,10 +73,10 @@ flood_protect = flood_protect_class()
 
 class connection_wrapper(object):
 
-    def __init__(self, connection, config, flood_protection, bot_class):
-        self.irc=connection
-        self.flood_protection = flood_protection
-        self.config = config
+    def __init__(self, bot_class):
+        self.irc=bot_class.irc
+        self.flood_protection = bot_class.config_flood_protection
+        self.config = bot_class.config
         self.db = thingdb.thing
         self.bot=bot_class
 
