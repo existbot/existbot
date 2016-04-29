@@ -60,6 +60,7 @@ class bot(object):
 
         Set's builtin commands and creates empty triggers and regex lists
         """
+        self.do_loop = True
         self.mtimes = {}
         self.events = builtin.events
         if self.reload_bot not in self.events:
@@ -73,7 +74,7 @@ class bot(object):
         Arguments:
             data {String} -- [description]
         """
-        log.send(data)
+        self.log.send(data)
         self.irc.send("{0}\r\n".format(data).encode("UTF-8"))
 
     def sendmsg(self, chan, msg):
@@ -102,7 +103,7 @@ class bot(object):
         """
         self.ircmsg = self.recv()
         for line in self.ircmsg:
-            log.receive(line)
+            self.log.receive(line)
         return self.ircmsg
 
     def recv(self):
@@ -183,14 +184,16 @@ class bot(object):
         now = time()
         diff = now - self.last_ping
         if diff > self.timeout:
-            self.send("QUIT :Lagging by {} seconds".format(str(diff)))
+            self.log.error("I am currently lagging by {} seconds, quitting in 5 seconds..".format(diff))
+            sleep(5)
+            self.restart("Lagging by {} seconds".format(str(diff)))
         else:
             self.send("PING :{}".format(now))
             self.ping_timer = Timer(self.pingfreq, self.ping)
             self.ping_timer.daemon = True
             self.ping_timer.start()
     def loop(self):
-        while True:
+        while self.do_loop == True:
             self.msg = self.printrecv()
             for irc_msg in self.msg:
                 self.irc_msg = irc_msg.replace(":", "", 1)
@@ -280,7 +283,76 @@ class bot(object):
                                 trigger_thread.start()
                             else:
                                 self.run_trigger(func, self.plugin_wrapper,self.info)
+        self.ping_timer = Timer(self.pingfreq, self.ping)
+        self.ping_timer.daemon = True
+        self.ping_timer.start()
+        self.connect()
+    def restart(self, quit_msg="Quit"):
+        self.send("QUIT :{0}".format(quit_msg))
+        self.do_loop = False
+        self.irc.close()
+    def connect(self):
+        if self.config_proxy:
+            self.sock = socks.socksocket()
+            self.sock.set_proxy(socks.SOCKS5, self.config_proxy_host, self.config_proxy_port)
+        elif self.config_ipv6:
+            self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        else:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if self.config_ssl and not self.config_proxy:
+            self.irc = securesl.wrap_socket(self.sock)
+        else:
+            self.irc = self.sock
+        #log.debug("Connecting to {} at port {}".format(self.host, self.port))
+        self.irc.connect((self.config_host, self.config_port))
+        self.repl = repl.Repl({"conn": wrappers.connection_wrapper(self)})
+        self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
+        log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self))
+        self.log = log
+        wrappers.specify(log)
+        if self.config_pass is not None:
+            self.send("PASS "+self.config_pass)
+        if self.config_sasl:
+            saslstring = b64encode("{0}\x00{0}\x00{1}".format(
+                            self.config_auth_user, self.config_auth_pass).encode("UTF-8"))
+            saslstring = saslstring.decode("UTF-8")
+            self.send("CAP REQ :sasl")
+            self.send("AUTHENTICATE PLAIN")
+            self.send("AUTHENTICATE {0}".format(saslstring))
+            authed = self.confirmsasl()
+            #authed = True
+            if authed:
+                self.send("CAP END")
+                self.send("NICK {0}".format(self.config_nick))
+                self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
+            else:
+                self.log.error("[ERROR] SASL aborted. exiting.")
+                self.send("QUIT :[ERROR] SASL aborted")
+                raise systemExit()
 
+        else:
+            self.send("NICK {0}".format(self.config_nick))
+            self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
+            if self.config_do_auth:
+                self.sendmsg("NickServ", "IDENTIFY {0} {1}".format(
+                        self.config_auth_user, self.config_auth_pass))
+        sleep(5)
+        self.send("JOIN {0}".format(",".join(self.config_channels)))
+        try:
+            if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
+                self.log.debug("New version of ezzybot ({0}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest))) # dev build support?
+        except:
+            self.log.error("Checking ezzybot's version failed.")
+        sleep(1)
+        try:
+            self.do_loop = True
+            self.loop()
+        except KeyboardInterrupt:
+            self.send("QUIT :{0}".format(self.config_quit_message)) # send automatically does log.send
+            self.irc.close()
+            raise SystemExit()
+        except:
+            traceback.print_exc()
     def run(self, config):
         """run({'nick': 'EzzyBot'})
 
@@ -335,80 +407,20 @@ class bot(object):
             self.config_permissions['dev'] = devs
         #get latest version on pypi
         self.latest = requests.get("https://pypi.python.org/pypi/ezzybot/json").json()['info']['version']
-
+        #Start fifo
         if self.config_fifo:
             self.fifo_thread = Thread(target=self.fifo)
             self.fifo_thread.setDaemon(True)
             self.fifo_thread.start()
-
+        #Create some classes
         self.colours = colours.colours()
         self.colors = self.colours
-        if self.config_proxy:
-            self.sock = socks.socksocket()
-            self.sock.set_proxy(socks.SOCKS5, self.config_proxy_host, self.config_proxy_port)
-        elif self.config_ipv6:
-            self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-        else:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if self.config_ssl and not self.config_proxy:
-            self.irc = securesl.wrap_socket(self.sock)
-        else:
-            self.irc = self.sock
-        log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self))
+        #Set mtimes to 0
         result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
         for i in result:
             self.mtimes[i] = 0
         self.importPlugins()
         self.__init__()
         self.events = self.events+hook.events
-        self.log = log
-        wrappers.specify(self.log)
-        #log.debug("Connecting to {} at port {}".format(self.host, self.port))
-        self.irc.connect((self.config_host, self.config_port))
-        self.printrecv()
-        if self.config_pass is not None:
-            self.send("PASS "+self.config_pass)
-            self.printrecv()
-        if self.config_sasl:
-            saslstring = b64encode("{0}\x00{0}\x00{1}".format(
-                            self.config_auth_user, self.config_auth_pass).encode("UTF-8"))
-            saslstring = saslstring.decode("UTF-8")
-            self.send("CAP REQ :sasl")
-            self.send("AUTHENTICATE PLAIN")
-            self.send("AUTHENTICATE {0}".format(saslstring))
-            authed = self.confirmsasl()
-            #authed = True
-            if authed:
-                self.send("CAP END")
-                self.send("NICK {0}".format(self.config_nick))
-                self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
-            else:
-                log.error("[ERROR] SASL aborted. exiting.")
-                self.send("QUIT :[ERROR] SASL aborted")
-                raise systemExit()
-
-        else:
-            self.send("NICK {0}".format(self.config_nick))
-            self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
-            if self.config_do_auth:
-                self.sendmsg("NickServ", "IDENTIFY {0} {1}".format(
-                        self.config_auth_user, self.config_auth_pass))
-        sleep(5)
-        self.send("JOIN {0}".format(",".join(self.config_channels)))
-
-        self.repl = repl.Repl({"conn": wrappers.connection_wrapper(self)})
-        self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
-        try:
-            if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
-                log.debug("New version of ezzybot ({0}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest))) # dev build support?
-        except:
-            log.error("Checking ezzybot's version failed.")
-        sleep(1)
         self.ping_timer.start()
-        try:
-            self.loop()
-        except KeyboardInterrupt:
-            self.send("QUIT :{0}".format(self.config_quit_message)) # send automatically does log.send
-            self.irc.close()
-        except:
-            traceback.print_exc()
+        self.connect()
