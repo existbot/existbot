@@ -1,8 +1,15 @@
 from setuptools import setup, find_packages
-from ezzybot import __version__
+import ast
+
+version = "1.0.0"
+with open('ezzybot/__init__.py') as f:
+    for line in f.read().split("\n"):
+        if line.startswith('__version__'):
+            version = ast.parse(line).body[0].value.s
+            break
 
 setup(name='ezzybot',
-      version=__version__,
+      version=version,
       description="Python IRC framework",
       url='https://ezzybot.zzirc.xyz',
       author='EzzyBot team',
