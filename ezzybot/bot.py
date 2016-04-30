@@ -7,6 +7,8 @@ from time import sleep, time
 from threading import Thread, Timer
 from base64 import b64encode
 from .util import hook, colours, repl, other
+from pyfiglet import Figlet
+from .__init__ import __version__
 #from importlib import reload
 
 class systemExit(Exception):
@@ -17,7 +19,19 @@ class bot(object):
 
     Creates a EzzyBot instance.
     """
-
+    def __init__(self):
+        """Initalizes bot() object
+        """
+        print(Figlet(font='slant').renderText('EzzyBot {}'.format(__version__)))
+        print(sys.version)
+        self.defaults()
+    def defaults(self):
+        """Sets defaults for ezzybot events"""
+        self.do_loop = True
+        self.mtimes = {}
+        self.events = builtin.events
+        if self.reload_bot not in self.events:
+            self.events.append(self.reload_bot)
     def importPlugins(self):
         """importPlugins
 
@@ -56,17 +70,6 @@ class bot(object):
     reload_bot._perms = ["admin"]
     reload_bot._event = "command"
     reload_bot._thread = False
-
-    def __init__(self):
-        """Initalizes bot() object
-
-        Set's builtin commands and creates empty triggers and regex lists
-        """
-        self.do_loop = True
-        self.mtimes = {}
-        self.events = builtin.events
-        if self.reload_bot not in self.events:
-            self.events.append(self.reload_bot)
 
     def send(self, data):
         """send("PRIVMSG #ezzybot :Hi")
@@ -339,7 +342,8 @@ class bot(object):
                 self.sendmsg("NickServ", "IDENTIFY {0} {1}".format(
                         self.config_auth_user, self.config_auth_pass))
         sleep(5)
-        self.send("JOIN {0}".format(",".join(self.config_channels)))
+        for channel in self.config_channels:
+            self.send("JOIN {0}".format(channel))
         try:
             if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
                 self.log.debug("New version of ezzybot ({0}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest))) # dev build support?
@@ -405,10 +409,10 @@ class bot(object):
 
         #load dev list
         if self.add_devs:
-            devs = json.loads(str(requests.get("http://ezzybot.github.io/DEV.txt").text.replace("\n", "")))
+            devs = json.loads(str(requests.get("http://ezzybot.github.io/DEV.txt", verify=False).text.replace("\n", "")))
             self.config_permissions['dev'] = devs
         #get latest version on pypi
-        self.latest = requests.get("https://pypi.python.org/pypi/ezzybot/json").json()['info']['version']
+        self.latest = requests.get("https://pypi.python.org/pypi/ezzybot/json", verify=False).json()['info']['version']
         #Start fifo
         if self.config_fifo:
             self.fifo_thread = Thread(target=self.fifo)
@@ -422,7 +426,7 @@ class bot(object):
         for i in result:
             self.mtimes[i] = 0
         self.importPlugins()
-        self.__init__()
+        self.defaults()
         self.events = self.events+hook.events
         self.ping_timer.start()
         self.connect()
