@@ -26,7 +26,7 @@ Developer Links:
 * [Cloud9](https://ide.c9.io/itslukej/ezzybot)
 
 Devs are:
-* zz
+* zz DOGE: DEzzyGgAyHwkAPbWTnyZFJQC19R1ZLUv3s
 * BWBellairs
 * IndigoTiger
 
