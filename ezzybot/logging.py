@@ -16,18 +16,16 @@ class Logging(object):
         self.log_channel = log_channel
         self.conn = conn
 
-    def error(self, error_msg, channel=None): # Sends a message before the bot shuts (ect) down because of a error | "[ERROR] Failed to connect"
-        if channel is None:
-            channel = self.log_channel
+    def error(self, error_msg, channel=self.log_channel): # Sends a message before the bot shuts (ect) down because of a error | "[ERROR] Failed to connect"
+        if channel is not None:
+            self.conn.send("PRIVMSG {0} :{1}[ERROR] {2}".format(channel, colours.RED, error_msg))
         print("{0}[ERROR] {1}".format(strftime("[%m/%d/%Y][%H:%M:%S]"), error_msg))
-        self.conn.send("PRIVMSG {0} :{1}[ERROR] {2}".format(channel, colours.RED, error_msg))
         self.log("[ERROR] {0}".format(error_msg))
 
-    def debug(self, debug_msg, channel=None): # Sends information to the user | "[DEBUG] Connecting to freenode
-        if channel is None:
-            channel = self.log_channel
+    def debug(self, debug_msg, channel=self.log_channel): # Sends information to the user | "[DEBUG] Connecting to freenode
+        if channel is not None:
+            self.conn.send("PRIVMSG {0} :{1}[DEBUG] {2}".format(channel, colours.BLUE, debug_msg))
         print("{0}[DEBUG] {1}".format(strftime("[%m/%d/%Y][%H:%M:%S]"), debug_msg))
-        self.conn.send("PRIVMSG {0} :{1}[DEBUG] {2}".format(channel, colours.BLUE, debug_msg))
         self.log("[DEBUG] {0}".format(debug_msg))
 
 
