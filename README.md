@@ -5,18 +5,34 @@ from ezzybot import bot
 
 mybot = bot()
 
-mybot.run({"nick": "MyEzzyBot", "channels":["#ezzybot"], "host": "irc.freenode.net"})
+config = {  
+   "nick":"EzzyBot",
+   "channels":["#ezzybot", "#ezzybot-debug", "#ezzybot-bots"],
+   "port":6667,
+   "SSL":False,
+   "SASL":True,
+   "do_auth": False,
+   "auth_user": "ezzybot",
+   "auth_pass": "<password>",
+   "quit_message":"Default quit reason",
+   "permissions": {
+       "admin": ["*!ident@host"]
+    },
+    "log_channel": "#ezzybot-debug"
+}
+
+mybot.run(config)
 ```
 
 Installation
 ```
-pip install ezzybot
+sudo pip install ezzybot
 ```
 
 Or, install the development version
 
 ```
-pip install git+https://github.com/ezzybot/ezzybot
+sudo pip install git+https://github.com/ezzybot/ezzybot
 ```
 
 #[Wiki](https://github.com/ezzybot/ezzybot/wiki)
