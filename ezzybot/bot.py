@@ -8,6 +8,7 @@ from threading import Thread, Timer
 from base64 import b64encode
 from .util import hook, colours, repl, other
 from pyfiglet import Figlet
+from . import util
 from .__init__ import __version__
 #from importlib import reload
 
@@ -56,13 +57,11 @@ class bot(object):
                     plugin = importlib.import_module("plugins."+i.split("/")[-2])
                     plugins["plugins."+i.split("/")[-2]] = plugin
         self.defaults()
-        #hook.events = []
+        hook.events = []
         for pluginname, plugin in plugins.items():
             globals()[pluginname] = reload(plugin)
         self.log.debug("Plugins sucessfully imported", info.channel)
-        self.events = self.events+hook.events
-        #self.log.debug(str(self.events), info.channel)
-        #self.log.debug(str(hook.events), info.channel)
+        self.events = hook.events
         self.log.debug("Plugins sucessfully added to list", info.channel)
     reload_bot._commandname = "reload"
     reload_bot._prefix = "!"
@@ -310,7 +309,7 @@ class bot(object):
             self.irc = self.sock
         #log.debug("Connecting to {} at port {}".format(self.host, self.port))
         self.irc.connect((self.config_host, self.config_port))
-        self.repl = repl.Repl({"conn": wrappers.connection_wrapper(self)})
+        self.repl = repl.Repl({"conn": wrappers.connection_wrapper(self), "bot": self, "irc": self.irc, "util": util})
         self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
         log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self))
         self.log = log
