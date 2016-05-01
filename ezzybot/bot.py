@@ -17,7 +17,7 @@ class systemExit(Exception):
 class bot(object):
     """ezzybot.bot()
 
-    Creates a EzzyBot instance.
+    Creates an EzzyBot instance.
     """
     def __init__(self):
         """Initalizes bot() object
@@ -25,6 +25,7 @@ class bot(object):
         print(Figlet(font='slant').renderText('EzzyBot {}'.format(__version__)))
         print(sys.version)
         self.defaults()
+        
     def defaults(self):
         """Sets defaults for ezzybot events"""
         self.do_loop = True
@@ -32,6 +33,7 @@ class bot(object):
         self.events = builtin.events
         if self.reload_bot not in self.events:
             self.events.append(self.reload_bot)
+            
     def importPlugins(self):
         """importPlugins
 
@@ -46,6 +48,200 @@ class bot(object):
                     globals()["plugins."+i.split("/")[-2]] = plugin
             self.mtimes[i] = os.path.getmtime(i)
 
+
+    def connect(self):
+        if self.config_proxy:
+            self.sock = socks.socksocket()
+            self.sock.set_proxy(socks.SOCKS5, self.config_proxy_host, self.config_proxy_port)
+        elif self.config_ipv6:
+            self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        else:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if self.config_ssl and not self.config_proxy:
+            self.irc = securesl.wrap_socket(self.sock)
+        else:
+            self.irc = self.sock
+        #log.debug("Connecting to {} at port {}".format(self.host, self.port))
+        self.irc.connect((self.config_host, self.config_port))
+        self.repl = repl.Repl({"conn": wrappers.connection_wrapper(self)})
+        self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
+        log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self))
+        self.log = log
+        wrappers.specify(log)
+        if self.config_pass is not None:
+            self.send("PASS "+self.config_pass)
+        if self.config_sasl:
+            saslstring = b64encode("{0}\x00{0}\x00{1}".format(
+                            self.config_auth_user, self.config_auth_pass).encode("UTF-8"))
+            saslstring = saslstring.decode("UTF-8")
+            self.send("CAP REQ :sasl")
+            self.send("AUTHENTICATE PLAIN")
+            self.send("AUTHENTICATE {0}".format(saslstring))
+            authed = self.confirmsasl()
+            if authed:
+                self.send("CAP END")
+                self.send("NICK {0}".format(self.config_nick))
+                self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
+            else:
+                self.log.error("[ERROR] SASL aborted. exiting.")
+                self.send("QUIT :[ERROR] SASL aborted")
+                raise systemExit()
+
+        else:
+            self.send("NICK {0}".format(self.config_nick))
+            self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
+            if self.config_do_auth:
+                self.sendmsg("NickServ", "IDENTIFY {0} {1}".format(
+                        self.config_auth_user, self.config_auth_pass))
+        sleep(5)
+        for channel in self.config_channels:
+            self.send("JOIN {0}".format(channel))
+        try:
+            if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
+                self.log.debug("New version of ezzybot ({0}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest))) # dev build support?
+        except:
+            self.log.error("Checking ezzybot's version failed.")
+        sleep(1)
+        try:
+            self.do_loop = True
+            self.loop()
+        except KeyboardInterrupt:
+            self.send("QUIT :{0}".format(self.config_quit_message)) # send automatically does log.send
+            self.irc.close()
+            raise SystemExit()
+        except:
+            traceback.print_exc()
+            
+    def confirmsasl(self):
+        """confirmsasl()
+
+        Waits until SASL has succeeded or not.
+
+        Returns:
+            bool -- Whether SASL has succeeded or not.
+        """
+        while True:
+            received = " ".join(self.printrecv())
+            auth_msgs = [":SASL authentication successful", ":SASL authentication failed", ":SASL authentication aborted"]
+            if auth_msgs[0] in received:
+                return True
+            elif auth_msgs[1] in received or auth_msgs[2] in received:
+                return False
+    
+    
+    def fifo(self):
+        while True:
+            if sys.version_info >= (3,0):
+                got_message = input("")
+            else:
+                got_message = raw_input("")
+            self.send(got_message) # input() for py 3
+            
+    def send(self, data):
+        """send("PRIVMSG #ezzybot :Hi")
+
+        Sends data out to the working connection and log.
+
+        Arguments:
+            data {String} -- [description]
+        """
+        self.log.send(data)
+        self.irc.send("{0}\r\n".format(data).encode("UTF-8"))
+
+    def sendmsg(self, chan, msg):
+        """sendmsg("#ezzybot", "Hi!")
+
+        Sends a PRIVMSG to the working connection.
+
+        Arguments:
+            chan {String} -- IRC Channel
+            msg {String} -- Message to be sent
+        """
+        self.send("PRIVMSG {0} :{1}".format(chan, msg))
+
+    def ping(self):
+        now = time()
+        diff = now - self.last_ping
+        if diff > self.timeout:
+            self.log.error("I am currently lagging by {} seconds, quitting in 5 seconds..".format(diff))
+            sleep(5)
+            self.restart("Lagging by {} seconds".format(str(diff)))
+        else:
+            self.send("PING :{}".format(now))
+            self.ping_timer = Timer(self.pingfreq, self.ping)
+            self.ping_timer.daemon = True
+            self.ping_timer.start()
+
+    def printrecv(self):
+        """printrecv()
+
+        Receives data from working connection and prints it.
+        """
+        self.ircmsg = self.recv()
+        for line in self.ircmsg:
+            self.log.receive(line)
+        return self.ircmsg
+
+    def recv(self):
+        """recv()
+
+        Receives data from working connection and returns it.
+        """
+        self.part = ""
+        self.data = ""
+        while not self.part.endswith("\r\n"):
+            self.part = self.irc.recv(2048)
+            self.part = self.part.decode("UTF-8")
+            #part = part
+            self.data += self.part
+        self.data = self.data.splitlines()
+        return self.data
+
+
+    def run_plugin(self, function, plugin_wrapper, channel, info):
+        """run_plugin(hello, plugin_wrapper, channel, info)
+
+        Runs function and prints result/error to irc.
+
+        Arguments:
+            function {Function} -- Plugin function
+            plugin_wrapper {Object} -- ezzybot.wrappers.connection_wrapper object
+            channel {String} -- Channel to send result to
+            info {Object} -- ezzybot.util.other.toClass object
+        """
+        try:
+            self.output =function(info=info, conn=plugin_wrapper)
+            if self.output != None:
+                if channel.startswith("#"):
+                    plugin_wrapper.msg(channel,"[{0}] {1}".format(info.nick, str(self.output)))
+                else:
+                    plugin_wrapper.msg(info.nick,"| "+str(self.output))
+        except Exception as e:
+            traceback.print_exc()
+            self.log.error(self.colours.VIOLET+"Caused by {0}, using command '{1}' in {2}".format(info.mask, info.message, info.channel))
+            if channel != self.config_log_channel:
+                plugin_wrapper.msg(channel, self.colours.RED+"Error! See {0} for more info.".format(self.config_log_channel))
+            for line in str(e).split("\n"):
+                self.log.error("[{0}] {1}".format(type(e).__name__, line))
+
+    def run_trigger(self, function, plugin_wrapper, info):
+        """run_trigger(hello, plugin_wrapper, info)
+
+        Runs trigger and messages errors.
+
+        Arguments:
+            function {Function} -- Plugin function
+            plugin_wrapper {Object} -- ezzybot.wrappers.connection_wrapper object
+            info {Object} -- ezzybot.util.other.toClass object
+        """
+        try:
+            function(info=info, conn=plugin_wrapper)
+        except Exception as e:
+            self.log.error(self.colours.VIOLET+"Caused by {0}".format(info.raw))
+            for line in str(e).split("\n"):
+                self.log.error(line)
+                
+        
     def reload_bot(self,info, conn):
         self.log.debug("Attemping Reload...", info.channel)
         result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
@@ -71,132 +267,85 @@ class bot(object):
     reload_bot._event = "command"
     reload_bot._thread = False
 
-    def send(self, data):
-        """send("PRIVMSG #ezzybot :Hi")
+        
+    def restart(self, quit_msg="Quit"):
+        self.send("QUIT :{0}".format(quit_msg))
+        self.do_loop = False
+        self.irc.close()
 
-        Sends data out to the working connection and log.
+    def run(self, config):
+        """run({'nick': 'EzzyBot'})
 
-        Arguments:
-            data {String} -- [description]
-        """
-        self.log.send(data)
-        self.irc.send("{0}\r\n".format(data).encode("UTF-8"))
-
-    def sendmsg(self, chan, msg):
-        """sendmsg("#ezzybot", "Hi!")
-
-        Sends a PRIVMSG to the working connection.
+        Runs Ezzybot
 
         Arguments:
-            chan {String} -- IRC Channel
-            msg {String} -- Message to be sent
+            config {Dict} -- The config
         """
-        self.send("PRIVMSG {0} :{1}".format(chan, msg))
+        global log
+        self.config = config
+        self.config_host = config.get("host", "irc.freenode.net")
+        self.config_port = config.get("port", 6667)
+        self.config_ipv6 = config.get("IPv6", False)
+        self.config_ssl = config.get("SSL", False)
+        self.config_sasl = config.get("SASL", False)
+        self.config_do_auth = config.get("do_auth", False)
+        self.config_auth_pass = config.get("auth_pass", None)
+        self.config_auth_user = config.get("auth_user", None)
+        self.config_nick = config.get("nick", "EzzyBot")
+        self.config_ident = config.get("ident", "EzzyBot")
+        self.config_realname = config.get("realname", "EzzyBot: a simple python framework for IRC bots.")
+        self.config_channels = config.get("channels", ["#EzzyBot"])
+        self.config_analytics = config.get("analytics", True)
+        self.config_quit_message = config.get("quit_message", "EzzyBot: a simple python framework for IRC bots.")
+        self.config_flood_protection = config.get("flood_protection", True)
+        self.config_permissions = config.get("permissions", {})
+        self.config_proxy = config.get("proxy", False)
+        self.config_proxy_type = config.get("proxy_type", "SOCKS5")
+        self.config_proxy_host = config.get("proxy_host", "")
+        self.config_proxy_port = config.get("proxy_port", 1080)
+        self.config_proxy_type = {"SOCKS5": socks.SOCKS5, "SOCKS4": socks.SOCKS4}[self.config_proxy_type]
+        self.config_log_channel = config.get("log_channel", "#ezzybot-debug")
+        self.config_pass = config.get("pass", None)
+        self.config_fifo = config.get("fifo", True)
+        self.config_command_limiting_initial_tokens = config.get("command_limiting_initial_tokens", 20)
+        self.config_command_limiting_message_cost = config.get("command_limiting_message_cost", 4)
+        self.config_command_limiting_restore_rate = config.get("command_limiting_restore_rate", 0.13)
+        self.config_limit_override = config.get("limit_override", ["admin", "dev"])
+        self.add_devs = config.get("add_devs", False)
+        #Lag detection
+        self.last_ping = time()
+        self.pingfreq = 60
+        self.timeout = self.pingfreq * 2
+        self.ping_timer = Timer(self.pingfreq, self.ping)
+        self.ping_timer.daemon = True
 
-    def fifo(self):
-        while True:
-            if sys.version_info >= (3,0):
-                got_message = input("")
-            else:
-                got_message = raw_input("")
-            self.send(got_message) # input() for py 3
+        self.shared_dict = {}
 
-    def printrecv(self):
-        """printrecv()
-
-        Recieves data from working connection and prints it.
-        """
-        self.ircmsg = self.recv()
-        for line in self.ircmsg:
-            self.log.receive(line)
-        return self.ircmsg
-
-    def recv(self):
-        """recv()
-
-        Recieves data from working connection and returns it.
-        """
-        self.part = ""
-        self.data = ""
-        while not self.part.endswith("\r\n"):
-            self.part = self.irc.recv(2048)
-            self.part = self.part.decode("UTF-8")
-            #part = part
-            self.data += self.part
-        self.data = self.data.splitlines()
-        return self.data
-
-    def run_plugin(self, function, plugin_wrapper, channel, info):
-        """run_plugin(hello, plugin_wrapper, channel, info)
-
-        Runs function and prints result/error to irc.
-
-        Arguments:
-            function {Function} -- Plugin function
-            plugin_wrapper {Object} -- ezzybot.wrappers.connection_wrapper object
-            channel {String} -- Channel to send result to
-            info {Object} -- ezzybot.util.other.toClass object
-        """
-        try:
-            self.output =function(info=info, conn=plugin_wrapper)
-            if self.output != None:
-                if channel.startswith("#"):
-                    plugin_wrapper.msg(channel,"[{0}] {1}".format(info.nick, str(self.output)))
-                else:
-                    plugin_wrapper.msg(info.nick,"| "+str(self.output))
-                #plugin_wrapper.msg(channel,"| "+str(self.output))
-        except Exception as e:
-            traceback.print_exc()
-            self.log.error(self.colours.VIOLET+"Caused by {0}, using command '{1}' in {2}".format(info.mask, info.message, info.channel))
-            if channel != self.config_log_channel:
-                plugin_wrapper.msg(channel, self.colours.RED+"Error! See {0} for more info.".format(self.config_log_channel))
-            for line in str(e).split("\n"):
-                self.log.error("[{0}] {1}".format(type(e).__name__, line))
-
-    def run_trigger(self, function, plugin_wrapper, info):
-        """run_trigger(hello, plugin_wrapper, info)
-
-        Runs trigger and messages errors.
-
-        Arguments:
-            function {Function} -- Plugin function
-            plugin_wrapper {Object} -- ezzybot.wrappers.connection_wrapper object
-            info {Object} -- ezzybot.util.other.toClass object
-        """
-        try:
-            function(info=info, conn=plugin_wrapper)
-        except Exception as e:
-            self.log.error(self.colours.VIOLET+"Caused by {0}".format(info.raw))
-            for line in str(e).split("\n"):
-                self.log.error(line)
-
-    def confirmsasl(self):
-        """confirmsasl()
-
-        Waits until SASL has succeeded or not.
-
-        Returns:
-            bool -- Weather SASL has succeeded or not.
-        """
-        while True:
-            received = " ".join(self.printrecv())
-            auth_msgs = [":SASL authentication successful", ":SASL authentication failed", ":SASL authentication aborted"]
-            if auth_msgs[0] in received:
-                return True
-            elif auth_msgs[1] in received or auth_msgs[2] in received:
-                return False
-    def ping(self):
-        now = time()
-        diff = now - self.last_ping
-        if diff > self.timeout:
-            self.log.error("I am currently lagging by {} seconds, quitting in 5 seconds..".format(diff))
-            sleep(5)
-            self.restart("Lagging by {} seconds".format(str(diff)))
-        else:
-            self.send("PING :{}".format(now))
-            self.ping_timer = Timer(self.pingfreq, self.ping)
-            self.ping_timer.daemon = True
-            self.ping_timer.start()
+        #Load dev list
+        if self.add_devs:
+            devs = json.loads(str(requests.get("http://ezzybot.github.io/DEV.txt", verify=False).text.replace("\n", "")))
+            self.config_permissions['dev'] = devs
+        #Get latest version on PyPI
+        self.latest = requests.get("https://pypi.python.org/pypi/ezzybot/json", verify=False).json()['info']['version']
+        #Start fifo
+        if self.config_fifo:
+            self.fifo_thread = Thread(target=self.fifo)
+            self.fifo_thread.setDaemon(True)
+            self.fifo_thread.start()
+        #Create some classes
+        self.colours = colours.colours()
+        self.colors = self.colours
+        #Set mtimes to 0
+        result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
+        for i in result:
+            self.mtimes[i] = 0
+        self.importPlugins()
+        self.defaults()
+        self.events = self.events+hook.events
+        self.ping_timer.start()
+        self.connect()
+        
+        
     def loop(self):
         while self.do_loop == True:
             self.msg = self.printrecv()
@@ -290,143 +439,5 @@ class bot(object):
                                 self.run_trigger(func, self.plugin_wrapper,self.info)
         self.ping_timer = Timer(self.pingfreq, self.ping)
         self.ping_timer.daemon = True
-        self.ping_timer.start()
-        self.connect()
-    def restart(self, quit_msg="Quit"):
-        self.send("QUIT :{0}".format(quit_msg))
-        self.do_loop = False
-        self.irc.close()
-    def connect(self):
-        if self.config_proxy:
-            self.sock = socks.socksocket()
-            self.sock.set_proxy(socks.SOCKS5, self.config_proxy_host, self.config_proxy_port)
-        elif self.config_ipv6:
-            self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-        else:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if self.config_ssl and not self.config_proxy:
-            self.irc = securesl.wrap_socket(self.sock)
-        else:
-            self.irc = self.sock
-        #log.debug("Connecting to {} at port {}".format(self.host, self.port))
-        self.irc.connect((self.config_host, self.config_port))
-        self.repl = repl.Repl({"conn": wrappers.connection_wrapper(self)})
-        self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
-        log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self))
-        self.log = log
-        wrappers.specify(log)
-        if self.config_pass is not None:
-            self.send("PASS "+self.config_pass)
-        if self.config_sasl:
-            saslstring = b64encode("{0}\x00{0}\x00{1}".format(
-                            self.config_auth_user, self.config_auth_pass).encode("UTF-8"))
-            saslstring = saslstring.decode("UTF-8")
-            self.send("CAP REQ :sasl")
-            self.send("AUTHENTICATE PLAIN")
-            self.send("AUTHENTICATE {0}".format(saslstring))
-            authed = self.confirmsasl()
-            #authed = True
-            if authed:
-                self.send("CAP END")
-                self.send("NICK {0}".format(self.config_nick))
-                self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
-            else:
-                self.log.error("[ERROR] SASL aborted. exiting.")
-                self.send("QUIT :[ERROR] SASL aborted")
-                raise systemExit()
-
-        else:
-            self.send("NICK {0}".format(self.config_nick))
-            self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
-            if self.config_do_auth:
-                self.sendmsg("NickServ", "IDENTIFY {0} {1}".format(
-                        self.config_auth_user, self.config_auth_pass))
-        sleep(5)
-        for channel in self.config_channels:
-            self.send("JOIN {0}".format(channel))
-        try:
-            if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
-                self.log.debug("New version of ezzybot ({0}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest))) # dev build support?
-        except:
-            self.log.error("Checking ezzybot's version failed.")
-        sleep(1)
-        try:
-            self.do_loop = True
-            self.loop()
-        except KeyboardInterrupt:
-            self.send("QUIT :{0}".format(self.config_quit_message)) # send automatically does log.send
-            self.irc.close()
-            raise SystemExit()
-        except:
-            traceback.print_exc()
-    def run(self, config):
-        """run({'nick': 'EzzyBot'})
-
-        Runs Ezzybot
-
-        Arguments:
-            config {Dict} -- The config
-        """
-        global log
-        self.config = config
-        self.config_host = config.get("host", "irc.freenode.net")
-        self.config_port = config.get("port", 6667)
-        self.config_ipv6 = config.get("IPv6", False)
-        self.config_ssl = config.get("SSL", False)
-        self.config_sasl = config.get("SASL", False)
-        self.config_do_auth = config.get("do_auth", False)
-        self.config_auth_pass = config.get("auth_pass", None)
-        self.config_auth_user = config.get("auth_user", None)
-        self.config_nick = config.get("nick", "EzzyBot")
-        self.config_ident = config.get("ident", "EzzyBot")
-        self.config_realname = config.get("realname", "EzzyBot: a simple python framework for IRC bots.")
-        self.config_channels = config.get("channels", ["#EzzyBot"])
-        self.config_analytics = config.get("analytics", True)
-        self.config_quit_message = config.get("quit_message", "EzzyBot: a simple python framework for IRC bots.")
-        self.config_flood_protection = config.get("flood_protection", True)
-        self.config_permissions = config.get("permissions", {})
-        self.config_proxy = config.get("proxy", False)
-        self.config_proxy_type = config.get("proxy_type", "SOCKS5")
-        self.config_proxy_host = config.get("proxy_host", "")
-        self.config_proxy_port = config.get("proxy_port", 1080)
-        self.config_proxy_type = {"SOCKS5": socks.SOCKS5, "SOCKS4": socks.SOCKS4}[self.config_proxy_type]
-        self.config_log_channel = config.get("log_channel", "#ezzybot-debug")
-        self.config_pass = config.get("pass", None)
-        self.config_fifo = config.get("fifo", True)
-        self.config_command_limiting_initial_tokens = config.get("command_limiting_initial_tokens", 20)
-        self.config_command_limiting_message_cost = config.get("command_limiting_message_cost", 4)
-        self.config_command_limiting_restore_rate = config.get("command_limiting_restore_rate", 0.13)
-        self.config_limit_override = config.get("limit_override", ["admin", "dev"])
-        self.add_devs = config.get("add_devs", False)
-        #Lag detection
-        self.last_ping = time()
-        self.pingfreq = 60
-        self.timeout = self.pingfreq * 2
-        self.ping_timer = Timer(self.pingfreq, self.ping)
-        self.ping_timer.daemon = True
-
-        self.shared_dict = {}
-
-        #load dev list
-        if self.add_devs:
-            devs = json.loads(str(requests.get("http://ezzybot.github.io/DEV.txt", verify=False).text.replace("\n", "")))
-            self.config_permissions['dev'] = devs
-        #get latest version on pypi
-        self.latest = requests.get("https://pypi.python.org/pypi/ezzybot/json", verify=False).json()['info']['version']
-        #Start fifo
-        if self.config_fifo:
-            self.fifo_thread = Thread(target=self.fifo)
-            self.fifo_thread.setDaemon(True)
-            self.fifo_thread.start()
-        #Create some classes
-        self.colours = colours.colours()
-        self.colors = self.colours
-        #Set mtimes to 0
-        result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
-        for i in result:
-            self.mtimes[i] = 0
-        self.importPlugins()
-        self.defaults()
-        self.events = self.events+hook.events
         self.ping_timer.start()
         self.connect()
