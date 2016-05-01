@@ -2,7 +2,7 @@
 #Created by zz & BWBellairs & IndigoTiger (freenode @ #ezzybot)
 import socks, re, traceback, time, socket, os, glob, importlib, requests, pkg_resources, json, sys
 import ssl as securesl
-from . import logging, wrappers, limit, builtin
+from . import logging, wrappers, limit, builtin, util
 from time import sleep, time
 from threading import Thread, Timer
 from base64 import b64encode
@@ -63,7 +63,7 @@ class bot(object):
             self.irc = self.sock
         #log.debug("Connecting to {} at port {}".format(self.host, self.port))
         self.irc.connect((self.config_host, self.config_port))
-        self.repl = repl.Repl({"conn": wrappers.connection_wrapper(self)})
+        self.repl = repl.Repl({"conn": wrappers.connection_wrapper(self), "bot": self, "irc": self.irc, "util": util})
         self.limit = limit.Limit(self.config_command_limiting_initial_tokens, self.config_command_limiting_message_cost, self.config_command_limiting_restore_rate, self.config_limit_override, self.config_permissions)
         log = logging.Logging(self.config_log_channel, wrappers.connection_wrapper(self))
         self.log = log
