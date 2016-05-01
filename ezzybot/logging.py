@@ -31,6 +31,8 @@ class Logging(object):
         self.log("[DEBUG] {0}".format(debug_msg))
 
     def send(self, send_msg): # Displays what the fraemwork sends to a server | "[SEND] channel :moo"
+        if type(send_msg) is not str:
+            send_msg = send_msg.decode("UTF-8")
         print("{0}[SEND] {1}".format(strftime("[%m/%d/%Y][%H:%M:%S]"), send_msg))
         self.log("[SEND] {0}".format(send_msg))
 
