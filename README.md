@@ -26,13 +26,13 @@ mybot.run(config)
 
 Installation
 ```
-pip install ezzybot
+sudo pip install ezzybot
 ```
 
 Or, install the development version
 
 ```
-pip install git+https://github.com/ezzybot/ezzybot
+sudo pip install git+https://github.com/ezzybot/ezzybot
 ```
 
 #[Wiki](https://github.com/ezzybot/ezzybot/wiki)
