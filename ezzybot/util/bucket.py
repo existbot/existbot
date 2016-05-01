@@ -29,6 +29,7 @@ class TokenBucket(object):
         return True
 
     def refill(self):
+        """Refills the token bucket"""
         self._tokens = self.capacity
 
     def get_tokens(self):
