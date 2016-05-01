@@ -11,7 +11,7 @@ log=None
 def specify(local_log):
     """wrappers.specify(self.log)
 
-    Specifys the log for wrappers to use.
+    Specifies the log for wrappers to use.
 
     Arguments:
         local_log {Object} -- Log Object
@@ -22,7 +22,7 @@ def specify(local_log):
 class permissions_class(object):
 
     def __init__(self, permissions):
-        self.permissions = permissions # {"admin": "zz!*@*"}
+        self.permissions = permissions
 
     def check(self, perms, mask): # perms = # ["admin"]
         if perms == "all":
@@ -87,7 +87,6 @@ class connection_wrapper(object):
             flood_protect.queue_add(self.irc, "{0}\r\n".format(raw).encode("UTF-8"))
 
     def msg(self, channel, message):
-        #self.send("PRIVMSG {} :{}".format(channel, message))
         if channel is not None:
             MSGLEN = 459 - 10 - len(channel)
             message_byte_count = sys.getsizeof(message)-37
@@ -96,7 +95,6 @@ class connection_wrapper(object):
                 self.send("PRIVMSG {0} :{1}".format(channel, message))
 
     def msg_first(self, channel, message):
-        #self.send("PRIVMSG {} :{}".format(channel, message))
         if channel is not None:
             MSGLEN = 459 - 10 - len(channel)
             message_byte_count = sys.getsizeof(message)-37
@@ -104,47 +102,40 @@ class connection_wrapper(object):
             for message in strings:
                 flood_protect.queue_add_first(self.irc, "PRIVMSG {0} :{1}\r\n".format(channel, message))
 
+    def action(self,channel,message):
+        self.sendmsg(channel,"\x01ACTION " + message + "\x01")
+        
     def notice(self, user, message):
         self.send("NOTICE {0} :{1}".format(user, message))
 
-    def quit(self, message=""):
-        self.send("QUIT :"+message)
 
     def ctcp(self, user, message):
         self.send("PRIVMSG {0} :\x01{1}\x01\x01".format(user, message))
 
-    def flush(self):
-        size = len(flood_protect.irc_queue)
-        flood_protect.__init__()
-        return str(size)
-
     def ping(self):
         self.irc.send("PONG :pingis\n".encode('utf-8'))
+        
+        
+    def nick(self,nick):
+        self.send("NICK {0}".format(nick))
+    
+    def quit(self, message=""):
+        self.send("QUIT :"+message)
+
 
     def part(self,chan):
         self.send("PART {0}".format(chan))
 
-    def nick(self,nick):
-        self.send("NICK {0}".format(nick))
-
     def join(self,chan):
         self.send("JOIN {0}".format(chan))
+
 
     def invite(self, chan, user):
         self.send("INVITE {0} {1}".format(user, chan))
 
-    def action(self,channel,message):
-        self.sendmsg(channel,"\x01ACTION " + message + "\x01")
-
     def kick(self,channel,user,message):
         user = user.replace(" ","").replace(":","")
         self.send("KICK " + channel + " " + user+ " :" + message)
-
-    def op(self,channel,nick):
-        self.send("MODE {0} +o {1}".format(channel,nick))
-
-    def deop(self,channel,nick):
-        self.send("MODE {0} -o {1}".format(channel,nick))
 
     def ban(self,channel,nick):
         self.send("MODE {0} +b {1}".format(channel,nick))
@@ -158,11 +149,23 @@ class connection_wrapper(object):
     def unquiet(self,channel,nick):
         self.send("MODE {0} -q {1}".format(channel,nick))
 
-    def unvoice(self,channel,nick):
-        self.send("MODE {0} -v {1}".format(channel,nick))
+
+    def op(self,channel,nick):
+        self.send("MODE {0} +o {1}".format(channel,nick))
+
+    def deop(self,channel,nick):
+        self.send("MODE {0} -o {1}".format(channel,nick))
 
     def voice(self,channel,nick):
         self.send("MODE {0} +v {1}".format(channel,nick))
 
+    def unvoice(self,channel,nick):
+        self.send("MODE {0} -v {1}".format(channel,nick))
+
     def mode(self,channel,nick,mode):
         self.send("MODE {0} {1} {2}".format(channel,mode,nick))
+
+    def flush(self):
+        size = len(flood_protect.irc_queue)
+        flood_protect.__init__()
+        return str(size)
