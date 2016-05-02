@@ -90,18 +90,11 @@ class bot(object):
         else:
             self.send("NICK {0}".format(self.config_nick))
             self.send("USER {0} * * :{1}".format(self.config_ident, self.config_realname))
-            if self.config_do_auth:
-                self.sendmsg("NickServ", "IDENTIFY {0} {1}".format(
-                        self.config_auth_user, self.config_auth_pass))
-        sleep(5)
-        for channel in self.config_channels:
-            self.send("JOIN {0}".format(channel))
         try:
             if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
                 self.log.debug("New version of ezzybot ({0}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest)), "no_send") # dev build support?
         except:
             self.log.error("Checking ezzybot's version failed.")
-        sleep(1)
         try:
             self.do_loop = True
             self.loop()
@@ -331,7 +324,6 @@ class bot(object):
         if self.config_fifo:
             self.fifo_thread = Thread(target=self.fifo)
             self.fifo_thread.setDaemon(True)
-            self.fifo_thread.start()
         #Create some classes
         self.colours = colours.colours()
         self.colors = self.colours
@@ -341,8 +333,6 @@ class bot(object):
             self.mtimes[i] = 0
         self.importPlugins()
         self.defaults()
-        self.events = self.events+hook.events
-        self.ping_timer.start()
         self.connect()
         
         
@@ -357,6 +347,15 @@ class bot(object):
                     self.send("PONG {0}".format(" ".join(self.t[1:])))
                 if self.t[1] == "PONG":
                     self.last_ping = time()
+                if self.t[1] == "001":
+                    self.ping_timer.start()
+                    self.fifo_thread.start()
+                    if self.config_do_auth and not self.config_sasl:
+                        self.sendmsg("NickServ", "IDENTIFY {0} {1}".format(self.config_auth_user, self.config_auth_pass))
+                    sleep(5)
+                    for channel in self.config_channels:
+                        self.send("JOIN {0}".format(channel))
+                    
                 if self.t[1] == "PRIVMSG":
                     self.ircmsg = self.irc_msg
                     self.nick = self.ircmsg.split("!")[0]
@@ -439,5 +438,4 @@ class bot(object):
                                 self.run_trigger(func, self.plugin_wrapper,self.info)
         self.ping_timer = Timer(self.pingfreq, self.ping)
         self.ping_timer.daemon = True
-        self.ping_timer.start()
         self.connect()
