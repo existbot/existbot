@@ -247,7 +247,7 @@ class bot(object):
                     plugin = importlib.import_module("plugins."+i.split("/")[-2])
                     plugins["plugins."+i.split("/")[-2]] = plugin
         self.defaults()
-        hook.events = []
+        #hook.events = []
         for pluginname, plugin in plugins.items():
             globals()[pluginname] = reload(plugin)
         self.log.debug("Plugins sucessfully imported", info.channel)
