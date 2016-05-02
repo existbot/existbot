@@ -98,7 +98,7 @@ class bot(object):
             self.send("JOIN {0}".format(channel))
         try:
             if str(self.latest) != str(pkg_resources.get_distribution("ezzybot").version):
-                self.log.debug("New version of ezzybot ({0}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest)), None) # dev build support?
+                self.log.debug("New version of ezzybot ({0}) is out, check ezzybot/ezzybot on github for installation info.".format(str(self.latest)), "no_send") # dev build support?
         except:
             self.log.error("Checking ezzybot's version failed.")
         sleep(1)
