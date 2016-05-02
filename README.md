@@ -45,7 +45,8 @@ Devs are:
 * zz DOGE: DEzzyGgAyHwkAPbWTnyZFJQC19R1ZLUv3s
 * BWBellairs
 * IndigoTiger
-
+Wiki team:
+* iovoid DOGE: DBvRFywkgZ6EyCN6mWHv8ypeoDHaaxed5C
 Wanna know more? (IRC) Freenode: #ezzybot
 
 [![Visit our IRC Chat!](https://kiwiirc.com/buttons/chat.freenode.net/ezzybot.png)](https://kiwiirc.com/client/chat.freenode.net/?nick=ezzy|?&theme=cli#ezzybot)
