@@ -44,9 +44,11 @@ class bot(object):
         for i in result:
             if i in self.mtimes:
                 if os.path.getmtime(i) != self.mtimes[i]:
-                    plugin = importlib.import_module("plugins."+i.split("/")[-2])
-                    globals()["plugins."+i.split("/")[-2]] = plugin
+                    globals()["plugins."+i.split("/")[-2]] = __import__("plugins."+i.split("/")[-2])
+            else:
+                globals()["plugins."+i.split("/")[-2]] = __import__("plugins."+i.split("/")[-2])
             self.mtimes[i] = os.path.getmtime(i)
+        self.events = hook.events+self.events
 
 
     def connect(self):
@@ -245,7 +247,7 @@ class bot(object):
                     plugin = importlib.import_module("plugins."+i.split("/")[-2])
                     plugins["plugins."+i.split("/")[-2]] = plugin
         self.defaults()
-        #hook.events = []
+        hook.events = []
         for pluginname, plugin in plugins.items():
             globals()[pluginname] = reload(plugin)
         self.log.debug("Plugins sucessfully imported", info.channel)
@@ -328,11 +330,10 @@ class bot(object):
         self.colours = colours.colours()
         self.colors = self.colours
         #Set mtimes to 0
-        result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
-        for i in result:
+        self.defaults()
+        for i in glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py")):
             self.mtimes[i] = 0
         self.importPlugins()
-        self.defaults()
         self.connect()
         
         
@@ -349,7 +350,8 @@ class bot(object):
                     self.last_ping = time()
                 if self.t[1] == "001":
                     self.ping_timer.start()
-                    self.fifo_thread.start()
+                    if self.config_fifo:
+                        self.fifo_thread.start()
                     if self.config_do_auth and not self.config_sasl:
                         self.sendmsg("NickServ", "IDENTIFY {0} {1}".format(self.config_auth_user, self.config_auth_pass))
                     sleep(5)
