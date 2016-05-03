@@ -42,7 +42,7 @@ class Logging(object):
             send_msg = send_msg.decode("UTF-8")
         self.log("[SEND] {0}".format(send_msg))
         send_msg = send_msg.encode("utf-8", "ignore")
-        print("{0}[SEND] {1}".format(strftime("[%m/%d/%Y][%H:%M:%S]"), send_msg)
+        print("{0}[SEND] {1}".format(strftime("[%m/%d/%Y][%H:%M:%S]"), send_msg))
 
     def receive(self, receive_msg): # Displays what the framework receives | [RECV] channel nick :msg"
         receive_msg = receive_msg.encode("utf-8", "ignore")
