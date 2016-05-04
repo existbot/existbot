@@ -21,9 +21,8 @@ class Logging(object):
             channel = None
         elif channel is None:
             channel = self.log_channel
-        self.conn.send("PRIVMSG {0} :{1}[ERROR] {2}".format(channel, colours.RED, error_msg))
-        error_msg = error_msg.encode("utf-8", "ignore")
         print("{0}[ERROR] {1}".format(strftime("[%m/%d/%Y][%H:%M:%S]"), error_msg))
+        self.conn.send("PRIVMSG {0} :{1}[ERROR] {2}".format(channel, colours.RED, error_msg))
         self.log("[ERROR] {0}".format(error_msg))
 
     def debug(self, debug_msg, channel=None): # Sends information to the user | "[DEBUG] Connecting to freenode
@@ -31,21 +30,18 @@ class Logging(object):
             channel = None
         elif channel is None:
             channel = self.log_channel
-        self.conn.send("PRIVMSG {0} :{1}[DEBUG] {2}".format(channel, colours.BLUE, debug_msg))
-        debug_msg = debug_msg.encode("utf-8", "ignore")
         print("{0}[DEBUG] {1}".format(strftime("[%m/%d/%Y][%H:%M:%S]"), debug_msg))
+        self.conn.send("PRIVMSG {0} :{1}[DEBUG] {2}".format(channel, colours.BLUE, debug_msg))
         self.log("[DEBUG] {0}".format(debug_msg))
 
 
     def send(self, send_msg): # Displays what the framework sends to a server | "[SEND] channel :moo"
         if type(send_msg) is not str:
             send_msg = send_msg.decode("UTF-8")
-        self.log("[SEND] {0}".format(send_msg))
-        send_msg = send_msg.encode("utf-8", "ignore")
         print("{0}[SEND] {1}".format(strftime("[%m/%d/%Y][%H:%M:%S]"), send_msg))
+        self.log("[SEND] {0}".format(send_msg))
 
     def receive(self, receive_msg): # Displays what the framework receives | [RECV] channel nick :msg"
-        receive_msg = receive_msg.encode("utf-8", "ignore")
         print("{0}[RECV] {1}".format(strftime("[%m/%d/%Y][%H:%M:%S]"), receive_msg))
         self.log("[RECV] {0}".format(receive_msg))
 
@@ -70,7 +66,6 @@ class Logging(object):
         return returned
 
     def log(self, log_msg): # Logs a msg to a txt file with a timestamp
-        log_msg = log_msg.encode("utf-8", "ignore") # Not needed but meh
         compiled_msg = strftime("[%m/%d/%Y][%H:%M:%S] {0}".format(log_msg))
         self.localEvents[strftime("[%m/%d/%Y][%H:%M:%S]")] = log_msg
         if compiled_msg.replace(" ","").replace("\n","") != "":
