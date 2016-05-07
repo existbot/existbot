@@ -1,3 +1,3 @@
 from .bot import *
 
-__version__ = "1.3.5-git"
+__version__ = "2.0.0-git"
