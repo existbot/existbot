@@ -3,7 +3,7 @@ from .util.config import config as Config
 from .limit import Limit
 from . import wrappers, builtin, util
 from .util import hook, colours, repl, other
-import pyfiglet, sys, requests, socks, socket, time, threading, os, glob, traceback
+import pyfiglet, sys, requests, socks, socket, time, threading, os, glob, traceback, re
 import ssl as _ssl
 
 class Socket(object):
@@ -42,7 +42,7 @@ class ConfigError(Exception):
     pass
 
 class bot(Socket):
-    def __init__(self, config=None, verbose=False):
+    def __init__(self, config=None):
         print(pyfiglet.Figlet(font='slant').renderText('EzzyBot {}'.format(__version__)))
         print(sys.version)
         self.config = config
@@ -86,8 +86,12 @@ class bot(Socket):
         Socket.__init__(self, self.config.ipv6, self.config.ssl, self.config.proxy, self.config.proxy_host, self.config.proxy_port, self.config.proxy_type)
         self.connect((self.config.host, self.config.port))
         self.connected = False
+        self.s_connected = False
         self.ping_timer = threading.Timer(self.pingfreq, self.ping)
         self.ping_timer.daemon = True
+        
+        self.repl = repl.Repl({"bot": self, "irc": self.socket, "conn": wrappers.connection_wrapper(self)})
+        
         self.loop()
     
     def ping(self):
@@ -102,7 +106,6 @@ class bot(Socket):
             self.ping_timer.start()
     
     def loop(self):
-        self.s_connected = False
         while True:
             self.received = self.printrecv()
             for received_message in self.received:
@@ -139,10 +142,9 @@ class bot(Socket):
                     self.message = self.ircmsg.split(" :",1)[1]
                     self.command = self.ircmsg.split(" :",1)[1].split(" ")[0]
                     self.args = self.message.replace(self.command, "")
-                    self.info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args, "raw": self.ircmsg}
-                    self.info = other.toClass(self.info)
+                    self._info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args, "raw": self.ircmsg}
+                    self.info = other.toClass(self._info)
                     info=self.info
-                    print(self.events)
                     for function in [func for func in self.events if func._event == "command"]:
                         if (function._prefix+function._commandname).lower() == self.command:
                             func = function
@@ -159,6 +161,12 @@ class bot(Socket):
                                 else:
                                     self.plugin_wrapper=wrappers.connection_wrapper(self)
                                     self.plugin_wrapper.notice(info.nick, "This command is rate limited, please try again later")
+                    for regex in [reg for reg in self.events if reg._event == "regex"]:
+                        result = re.findall(regex._regex, self.ircmsg)
+                        if result:
+                            self._info['regex'] = result
+                            self.info = other.toClass(self._info)
+                            run_trigger(regex, wrappers.connection_wrapper(self), self.info)
     def run_plugin(self, function, plugin_wrapper, channel, info):
         """run_plugin(hello, plugin_wrapper, channel, info)
         Runs function and prints result/error to irc.
