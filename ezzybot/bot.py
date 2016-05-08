@@ -5,6 +5,7 @@ from . import wrappers, builtin, util
 from .util import hook, colours, repl, other
 import pyfiglet, sys, requests, socks, socket, time, threading, os, glob, traceback, re
 import ssl as _ssl
+from base64 import b64encode
 
 class Socket(object):
     def __init__(self, ipv6=False, ssl=False, proxy=False, proxy_host=None, proxy_port=None, proxy_type=None):
@@ -35,13 +36,21 @@ class Socket(object):
             print("[RECV] "+line)
         return self.received_message
     def send(self, data):
+        if type(data) is not str:
+            data = data.decode("UTF-8")
         self.socket.send("{0}\r\n".format(data).encode("UTF-8"))
-        print("[SEND] "+data)
+        print("[SEND] "+str(data))
 
 class ConfigError(Exception):
     pass
 
-class bot(Socket):
+class SASLError(Exception):
+    pass
+
+class NickRegain(Exception):
+    pass
+
+class ezzybot(Socket):
     def __init__(self, config=None):
         print(pyfiglet.Figlet(font='slant').renderText('EzzyBot {}'.format(__version__)))
         print(sys.version)
@@ -70,9 +79,9 @@ class bot(Socket):
     def run(self, config=None):
         if self.config is None and config is None:
             raise ConfigError("No config specified.")
-        else:
-            self.config = config
-        self.config = Config(config)
+        elif config is not None:
+             self.config = config
+        self.config = Config(self.config)
         #Set some attributes for things
         self.limit = Limit(self.config.command_limiting_initial_tokens, self.config.command_limiting_message_cost, self.config.command_limiting_restore_rate, self.config.limit_override, self.config.permissions)
         
@@ -87,6 +96,7 @@ class bot(Socket):
         self.connect((self.config.host, self.config.port))
         self.connected = False
         self.s_connected = False
+        self.do_regain = False
         self.ping_timer = threading.Timer(self.pingfreq, self.ping)
         self.ping_timer.daemon = True
         
@@ -104,7 +114,31 @@ class bot(Socket):
             self.ping_timer = threading.Timer(self.pingfreq, self.ping)
             self.ping_timer.daemon = True
             self.ping_timer.start()
-    
+    def do_sasl(self):
+        self.send("CAP REQ :sasl")
+        while True:
+            for line in self.printrecv():
+                line = line.split()
+                if line[0] == "AUTHENTICATE":
+                    if line[1] == "+":
+                        saslstring = b64encode("{0}\x00{0}\x00{1}".format(
+                                        self.config.auth_user,
+                                        self.config.auth_pass).encode("UTF-8"))
+                        self.send("AUTHENTICATE {0}".format(saslstring.decode("UTF-8")))
+                elif line[1] == "CAP":
+                    if line[3] == "ACK":
+                        line[4] = line[4].strip(":")
+                        caps = line[4:]
+                        if "sasl" in caps:
+                            self.send("AUTHENTICATE PLAIN")
+                elif line[1] == "903":
+                    self.send("CAP END")
+                    return True
+                elif line[1] == "904" or line[1] == "905" or line[1] == "906":
+                    error = " ".join(line[2:]).strip(":")
+                    self.send("QUIT :[ERROR] {0}".format(error))
+                    raise SASLError(error)
+
     def loop(self):
         while True:
             self.received = self.printrecv()
@@ -116,18 +150,36 @@ class bot(Socket):
                 if split_message[1] == "PONG":
                     self.last_ping = time.time()
                 if split_message[0] == "ERROR":
+                    if "Nickname regained by services" in received_message:
+                        raise NickRegain()
                     if self.ping_timer.isAlive():
                         self.ping_timer.cancel()
                     self.close()
                     self._connect()
                 if not self.s_connected and split_message[1] == "NOTICE":
+                    if self.config.password is not None:
+                        self.send("PASS {0}".format(self.config.password))
+                    if self.config.sasl:
+                        self.do_sasl()
                     self.s_connected = True
-                    self.send("NICK {0}".format(self.config.nick))
                     self.send("USER {0} * * :{1}".format(self.config.ident, self.config.realname))
+                    self.send("NICK {0}".format(self.config.nick))
+                if not self.connected:
+                    if split_message[1] == "433" or split_message[1] == "437":
+                        self.do_regain = True
+                        if not hasattr(self.config, "first_nick"):
+                            self.config.first_nick = self.config.nick
+                        self.config.nick = self.config.nick+"_"
+                        self.send("NICK {0}".format(self.config.nick))
                 if split_message[1] == "001":
                     self.connected = True
                     self.last_ping = time.time()
                     self.ping_timer.start()
+                    if self.config.do_auth or self.config.sasl and self.do_regain:
+                        self.do_regain = False
+                        self.send("PRIVMSG NickServ :REGAIN {0} {1}".format(self.config.first_nick, self.config.auth_pass))
+                        time.sleep(3)
+                        self.send("NICK {0}".format(self.config.first_nick))
                     if self.config.do_auth and not self.config.sasl:
                         self.send("PRIVMSG NickServ :IDENTIFY {0} {1}".format(self.config.auth_user, self.config.auth_pass))
                     for channel in self.config.channels:
@@ -205,3 +257,6 @@ class bot(Socket):
             plugin_wrapper.msg(self.config.log_channel, self.colours.VIOLET+"Caused by {0}".format(info.raw))
             for line in str(e).split("\n"):
                 plugin_wrapper.msg(self.config.log_channel, line)
+                
+def bot(config=None):
+    return ezzybot(config)
