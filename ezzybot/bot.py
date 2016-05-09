@@ -3,7 +3,7 @@ from .util.config import config as Config
 from .limit import Limit
 from . import wrappers, builtin, util
 from .util import hook, colours, repl, other
-import pyfiglet, sys, requests, socks, socket, time, threading, os, glob, traceback, re
+import pyfiglet, sys, requests, socks, socket, time, threading, os, glob, traceback, re, glob
 import ssl as _ssl
 from base64 import b64encode
 
@@ -62,6 +62,9 @@ class ezzybot(Socket):
     def defaults(self):
         self.mtimes = {}
         self.events = builtin.events
+        self.modules = {}
+        if self.reload_bot not in self.events:
+            self.events.append(self.reload_bot)
     def importPlugins(self):
         """importPlugins
         Imports plugins from plugins/ folder
@@ -71,11 +74,28 @@ class ezzybot(Socket):
         for i in result:
             if i in self.mtimes:
                 if os.path.getmtime(i) != self.mtimes[i]:
-                    globals()["plugins."+i.split("/")[-2]] = __import__("plugins."+i.split("/")[-2])
+                    self.modules["plugins."+i.split("/")[-2]] = __import__("plugins."+i.split("/")[-2])
             else:
-                globals()["plugins."+i.split("/")[-2]] = __import__("plugins."+i.split("/")[-2])
-            self.mtimes[i] = os.path.getmtime(i)
+                self.modules["plugins."+i.split("/")[-2]] = __import__("plugins."+i.split("/")[-2])
         self.events = hook.events+self.events
+    def reload_bot(self,info,conn):
+        plugins={}
+        for i in glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py")):
+            if i in self.mtimes:
+                if os.path.getmtime(i) != self.mtimes[i]:
+                    plugins["plugins."+i.split("/")[-2]] = __import__("plugins."+i.split("/")[-2])
+            else:
+                plugins["plugins."+i.split("/")[-2]] = __import__("plugins."+i.split("/")[-2])
+        self.defaults()
+        for pluginname, plugin in plugins.items():
+            self.modules[pluginname] = reload(plugin)
+        self.events = self.events+hook.events
+    reload_bot._commandname = "reload"
+    reload_bot._prefix = "!"
+    reload_bot._help = reload_bot.__doc__
+    reload_bot._perms = ["admin"]
+    reload_bot._event = "command"
+    reload_bot._thread = False
     def run(self, config=None):
         if self.config is None and config is None:
             raise ConfigError("No config specified.")
@@ -151,7 +171,7 @@ class ezzybot(Socket):
                     self.last_ping = time.time()
                 if split_message[0] == "ERROR":
                     if "Nickname regained by services" in received_message:
-                        raise NickRegain()
+                        raise NickRegain(received_message)
                     if self.ping_timer.isAlive():
                         self.ping_timer.cancel()
                     self.close()
@@ -179,6 +199,7 @@ class ezzybot(Socket):
                         self.do_regain = False
                         self.send("PRIVMSG NickServ :REGAIN {0} {1}".format(self.config.first_nick, self.config.auth_pass))
                         time.sleep(3)
+                        self.config.nick = self.config.first_nick
                         self.send("NICK {0}".format(self.config.first_nick))
                     if self.config.do_auth and not self.config.sasl:
                         self.send("PRIVMSG NickServ :IDENTIFY {0} {1}".format(self.config.auth_user, self.config.auth_pass))
@@ -214,11 +235,15 @@ class ezzybot(Socket):
                                     self.plugin_wrapper=wrappers.connection_wrapper(self)
                                     self.plugin_wrapper.notice(info.nick, "This command is rate limited, please try again later")
                     for regex in [reg for reg in self.events if reg._event == "regex"]:
-                        result = re.findall(regex._regex, self.ircmsg)
+                        result = re.findall(regex._regex, received_message)
                         if result:
                             self._info['regex'] = result
                             self.info = other.toClass(self._info)
-                            run_trigger(regex, wrappers.connection_wrapper(self), self.info)
+                            self.run_trigger(regex, wrappers.connection_wrapper(self), self.info)
+                for trigger in [func for func in self.events if func._event == "trigger"]:
+                    if trigger._trigger == "*" or trigger._trigger.upper() == split_message[1].upper():
+                        self.run_trigger(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}))
+                        
     def run_plugin(self, function, plugin_wrapper, channel, info):
         """run_plugin(hello, plugin_wrapper, channel, info)
         Runs function and prints result/error to irc.
