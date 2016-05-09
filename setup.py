@@ -18,4 +18,9 @@ setup(name='ezzybot',
       packages=find_packages(),
       install_requires=['thingdb', 'pysocks', 'requests', 'pyfiglet'],
       include_package_data=True,
+      entry_points={
+          'console_scripts': [
+              'ezzybot = ezzybot:cmd'
+          ]
+      },
       zip_safe=False)
