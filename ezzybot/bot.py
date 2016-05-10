@@ -41,7 +41,6 @@ class Socket(object):
             for line in self.received_message:
                 self.log.receive(line)
         #for line in self.received_message:
-        #    print("[RECV] "+line)
         return self.received_message
     def send(self, data):
         if type(data) is not str:
@@ -212,7 +211,7 @@ class ezzybot(Socket):
                     self.ping_timer.start()
                     if self.config.do_auth or self.config.sasl and self.do_regain:
                         self.do_regain = False
-                        self.send("PRIVMSG NickServ :REGAIN {0} {1}".format(lf.config.first_nick, self.config.auth_pass))
+                        self.send("PRIVMSG NickServ :REGAIN {0} {1}".format(self.config.first_nick, self.config.auth_pass))
                         time.sleep(3)
                         self.config.nick = self.config.first_nick
                         self.send("NICK {0}".format(self.config.first_nick))
