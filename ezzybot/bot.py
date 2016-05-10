@@ -1,22 +1,27 @@
 from .__init__ import __version__
 from .util.config import config as Config
 from .limit import Limit
-from . import wrappers, builtin, util
+from . import wrappers, builtin, util, logging
 from .util import hook, colours, repl, other
-import pyfiglet, sys, requests, socks, socket, time, threading, os, glob, traceback, re, glob
+import pyfiglet, sys, requests, socks, socket, time, threading, os, glob, traceback, re, glob, thingdb
 import ssl as _ssl
 from base64 import b64encode
 
 class Socket(object):
     def __init__(self, ipv6=False, ssl=False, proxy=False, proxy_host=None, proxy_port=None, proxy_type=None):
+        self.attachments = []
+        
         if proxy:
+            self.attachments.append("proxy")
             self.socket = socks.socksocket()
             self.socket.set_proxy(proxy_type, proxy_host, proxy_port)
         elif ipv6:
+            self.attachments.append("IPv6")
             self.socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         else:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if ssl and not proxy:
+            self.attachments.append("SSL")
             self.socket = _ssl.wrap_socket(self.socket)
         self.connect = self.socket.connect
         self.close = self.socket.close
@@ -32,14 +37,19 @@ class Socket(object):
         return self.data
     def printrecv(self):
         self.received_message = self.recv()
-        for line in self.received_message:
-            print("[RECV] "+line)
+        if hasattr(self, "log"):
+            for line in self.received_message:
+                self.log.receive(line)
+        #for line in self.received_message:
+        #    print("[RECV] "+line)
         return self.received_message
     def send(self, data):
         if type(data) is not str:
             data = data.decode("UTF-8")
         self.socket.send("{0}\r\n".format(data).encode("UTF-8"))
-        print("[SEND] "+str(data))
+        #print("[SEND] "+str(data))
+        if hasattr(self, "log"):
+            self.log.send(str(data))
 
 class ConfigError(Exception):
     pass
@@ -102,6 +112,11 @@ class ezzybot(Socket):
         elif config is not None:
              self.config = config
         self.config = Config(self.config)
+        self.db_loc = os.path.join("data", self.config.host, self.config.nick.lower(), "")
+        self.log = logging.log(self.config)
+        if not os.path.exists(self.db_loc):
+            os.makedirs(os.path.dirname(self.db_loc))
+        self.db = thingdb.thing(os.path.join(self.db_loc, "state.db"))
         #Set some attributes for things
         self.limit = Limit(self.config.command_limiting_initial_tokens, self.config.command_limiting_message_cost, self.config.command_limiting_restore_rate, self.config.limit_override, self.config.permissions)
         
@@ -197,7 +212,7 @@ class ezzybot(Socket):
                     self.ping_timer.start()
                     if self.config.do_auth or self.config.sasl and self.do_regain:
                         self.do_regain = False
-                        self.send("PRIVMSG NickServ :REGAIN {0} {1}".format(self.config.first_nick, self.config.auth_pass))
+                        self.send("PRIVMSG NickServ :REGAIN {0} {1}".format(lf.config.first_nick, self.config.auth_pass))
                         time.sleep(3)
                         self.config.nick = self.config.first_nick
                         self.send("NICK {0}".format(self.config.first_nick))
@@ -282,6 +297,7 @@ class ezzybot(Socket):
             plugin_wrapper.msg(self.config.log_channel, self.colours.VIOLET+"Caused by {0}".format(info.raw))
             for line in str(e).split("\n"):
                 plugin_wrapper.msg(self.config.log_channel, line)
-                
+    def __repr__(self):
+        return "{0}(Server={1}, {2})".format(self.__class__.__name__, self.config.host, ", ".join([x+"=True" for x in self.attachments]))
 def bot(config=None):
     return ezzybot(config)
