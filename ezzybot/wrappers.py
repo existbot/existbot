@@ -1,28 +1,15 @@
 import thingdb
 from fnmatch import fnmatch
 from threading import Thread
-from time import sleep
+from time import sleep, time
 from .util import other
 import sys
 import importlib
 
-log=None
-
-def specify(local_log):
-    """wrappers.specify(self.log)
-
-    Specifies the log for wrappers to use.
-
-    Arguments:
-        local_log {Object} -- Log Object
-    """
-    global log
-    log = local_log
-
 class permissions_class(object):
 
     def __init__(self, permissions):
-        self.permissions = permissions
+        self.permissions = permissions # {"admin": "zz!*@*"}
 
     def check(self, perms, mask): # perms = # ["admin"]
         if perms == "all":
@@ -50,7 +37,6 @@ class flood_protect_class(object):
                 self.irc_queue_running = False
                 break
             connection.send(raw)
-            log.send(raw)
             sleep(1)
 
     def queue_add(self, connection, raw):
@@ -74,8 +60,8 @@ flood_protect = flood_protect_class()
 class connection_wrapper(object):
 
     def __init__(self, bot_class):
-        self.irc=bot_class.irc
-        self.flood_protection = bot_class.config_flood_protection
+        self.irc=bot_class.socket
+        self.flood_protection = bot_class.config.flood_protection
         self.config = bot_class.config
         self.db = thingdb.thing
         self.bot=bot_class
@@ -84,9 +70,10 @@ class connection_wrapper(object):
         if not self.flood_protection:
             self.irc.send("{0}\r\n".format(raw).encode("UTF-8"))
         else:
-            flood_protect.queue_add(self.irc, "{0}\r\n".format(raw).encode("UTF-8"))
+            flood_protect.queue_add(self.bot, "{0}\r\n".format(raw).encode("UTF-8"))
 
     def msg(self, channel, message):
+        #self.send("PRIVMSG {} :{}".format(channel, message))
         if channel is not None:
             MSGLEN = 459 - 10 - len(channel)
             message_byte_count = sys.getsizeof(message)-37
@@ -95,6 +82,7 @@ class connection_wrapper(object):
                 self.send("PRIVMSG {0} :{1}".format(channel, message))
 
     def msg_first(self, channel, message):
+        #self.send("PRIVMSG {} :{}".format(channel, message))
         if channel is not None:
             MSGLEN = 459 - 10 - len(channel)
             message_byte_count = sys.getsizeof(message)-37
@@ -102,70 +90,65 @@ class connection_wrapper(object):
             for message in strings:
                 flood_protect.queue_add_first(self.irc, "PRIVMSG {0} :{1}\r\n".format(channel, message))
 
-    def action(self,channel,message):
-        self.sendmsg(channel,"\x01ACTION " + message + "\x01")
-        
     def notice(self, user, message):
         self.send("NOTICE {0} :{1}".format(user, message))
 
-
-    def ctcp(self, user, message):
-        self.send("PRIVMSG {0} :\x01{1}\x01\x01".format(user, message))
-
-    def ping(self):
-        self.irc.send("PONG :pingis\n".encode('utf-8'))
-        
-        
-    def nick(self,nick):
-        self.send("NICK {0}".format(nick))
-    
     def quit(self, message=""):
         self.send("QUIT :"+message)
-
-
-    def part(self,chan):
-        self.send("PART {0}".format(chan))
-
-    def join(self,chan):
-        self.send("JOIN {0}".format(chan))
-
-
-    def invite(self, chan, user):
-        self.send("INVITE {0} {1}".format(user, chan))
-
-    def kick(self,channel,user,message):
-        user = user.replace(" ","").replace(":","")
-        self.send("KICK " + channel + " " + user+ " :" + message)
-
-    def ban(self,channel,nick):
-        self.send("MODE {0} +b {1}".format(channel,nick))
-
-    def unban(self,channel,nick):
-        self.send("MODE {0} -b {1}".format(channel,nick))
-
-    def quiet(self,channel,nick):
-        self.send("MODE {0} +q {1}".format(channel,nick))
-
-    def unquiet(self,channel,nick):
-        self.send("MODE {0} -q {1}".format(channel,nick))
-
-
-    def op(self,channel,nick):
-        self.send("MODE {0} +o {1}".format(channel,nick))
-
-    def deop(self,channel,nick):
-        self.send("MODE {0} -o {1}".format(channel,nick))
-
-    def voice(self,channel,nick):
-        self.send("MODE {0} +v {1}".format(channel,nick))
-
-    def unvoice(self,channel,nick):
-        self.send("MODE {0} -v {1}".format(channel,nick))
-
-    def mode(self,channel,nick,mode):
-        self.send("MODE {0} {1} {2}".format(channel,mode,nick))
+    
+    def ctcp(self, user, message):
+        self.send("PRIVMSG {0} :\x01{1}\x01\x01".format(user, message))
 
     def flush(self):
         size = len(flood_protect.irc_queue)
         flood_protect.__init__()
         return str(size)
+
+    def ping(self):
+        self.send("PING :{}".format(str(int(time()))).encode('utf-8'))
+
+    def part(self, chan):
+        self.send("PART {0}".format(chan))
+
+    def nick(self, nick):
+        self.send("NICK {0}".format(nick))
+
+    def join(self, chan):
+        self.send("JOIN {0}".format(chan))
+
+    def invite(self, chan, user):
+        self.send("INVITE {0} {1}".format(user, chan))
+
+    def action(self, channel, message):
+        self.sendmsg(channel,"\x01ACTION " + message + "\x01")
+
+    def kick(self,channel, user, message):
+        user = user.replace(" ","").replace(":","")
+        self.send("KICK " + channel + " " + user+ " :" + message)
+
+    def op(self, channel, nick):
+        self.send("MODE {0} +o {1}".format(channel, nick))
+
+    def deop(self, channel, nick):
+        self.send("MODE {0} -o {1}".format(channel, nick))
+
+    def ban(self, channel, nick):
+        self.send("MODE {0} +b {1}".format(channel, nick))
+
+    def unban(self, channel, nick):
+        self.send("MODE {0} -b {1}".format(channel, nick))
+
+    def quiet(self, channel, nick):
+        self.send("MODE {0} +q {1}".format(channel, nick))
+
+    def unquiet(self, channel, nick):
+        self.send("MODE {0} -q {1}".format(channel, nick))
+
+    def unvoice(self, channel, nick):
+        self.send("MODE {0} -v {1}".format(channel, nick))
+
+    def voice(self, channel, nick):
+        self.send("MODE {0} +v {1}".format(channel, nick))
+
+    def mode(self, channel, nick, mode):
+        self.send("MODE {0} {1} {2}".format(channel, mode, nick))
