@@ -16,7 +16,7 @@ setattr(help_bot, "_thread", False)
 events.append(help_bot)
 
 def list_bot(conn=None, info=None):
-    return " ".join([func._commandname for func in conn.bot.events if func._event == "command"])+1
+    return " ".join([func._commandname for func in conn.bot.events if func._event == "command"])
 
 setattr(list_bot, "_commandname", "list")
 setattr(list_bot, "_prefix", "!")
