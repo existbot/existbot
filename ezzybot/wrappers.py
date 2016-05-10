@@ -60,7 +60,7 @@ flood_protect = flood_protect_class()
 class connection_wrapper(object):
 
     def __init__(self, bot_class):
-        self.irc=bot_class
+        self.irc=bot_class.socket
         self.flood_protection = bot_class.config.flood_protection
         self.config = bot_class.config
         self.db = thingdb.thing
@@ -68,7 +68,7 @@ class connection_wrapper(object):
 
     def send(self, raw):
         if not self.flood_protection:
-            self.bot.send("{0}\r\n".format(raw).encode("UTF-8"))
+            self.irc.send("{0}\r\n".format(raw).encode("UTF-8"))
         else:
             flood_protect.queue_add(self.bot, "{0}\r\n".format(raw).encode("UTF-8"))
 
