@@ -11,7 +11,7 @@ with open('ezzybot/__init__.py') as f:
 setup(name='ezzybot',
       version=version,
       description="Python IRC framework",
-      url='https://ezzybot.zzirc.xyz',
+      url='https://github.com/Azure-Developments/ezzybot',
       author='EzzyBot team',
       author_email='me@lukej.me',
       license='GNU',
