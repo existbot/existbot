@@ -32,10 +32,10 @@ sudo pip install ezzybot
 Or, install the development version
 
 ```
-sudo pip install git+https://github.com/ezzybot/ezzybot
+sudo pip install git+https://github.com/Azure-Developments/ezzybot
 ```
 
-#[Wiki](https://github.com/ezzybot/ezzybot/wiki)
+#[Wiki](https://github.com/Azure-Developments/ezzybot/wiki)
 
 Developer Links:
 * [Travis](https://travis-ci.org/ezzybot/ezzybot)
