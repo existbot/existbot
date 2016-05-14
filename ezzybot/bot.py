@@ -83,7 +83,7 @@ class ezzybot(Socket):
         """importPlugins
         Imports plugins from plugins/ folder
         """
-        result =  glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py"))
+        result = glob.glob(os.path.join(os.getcwd(), "plugins", "*", "*.py"))
         hook.events = []
         for i in result:
             if i in self.mtimes:
@@ -94,7 +94,7 @@ class ezzybot(Socket):
         self.events = hook.events+self.events
     def reload_bot(self,info,conn):
         plugins={}
-        for i in glob.glob(os.path.join(os.getcwd(), "plugins", "*/*.py")):
+        for i in glob.glob(os.path.join(os.getcwd(), "plugins", "*", "*.py")):
             if i in self.mtimes:
                 if os.path.getmtime(i) != self.mtimes[i]:
                     plugins["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split("/")[-2])
