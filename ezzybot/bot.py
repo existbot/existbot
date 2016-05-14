@@ -123,7 +123,7 @@ class ezzybot(Socket):
         self.db = thingdb.thing(os.path.join(self.db_loc, "state.db"))
         #Set some attributes for things
         self.limit = Limit(self.config.command_limiting_initial_tokens, self.config.command_limiting_message_cost, self.config.command_limiting_restore_rate, self.config.limit_override, self.config.permissions)
-        self.caps = ["extended-join", "account-notify"]
+        
         self.pingfreq = 15
         self.timeout = self.pingfreq * 2
         
@@ -154,6 +154,7 @@ class ezzybot(Socket):
             self.ping_timer.daemon = True
             self.ping_timer.start()
     def do_sasl(self):
+        self.send("CAP REQ :sasl")
         while True:
             for line in self.printrecv():
                 line = line.split()
@@ -197,9 +198,6 @@ class ezzybot(Socket):
                 if not self.s_connected and split_message[1] == "NOTICE":
                     if self.config.password is not None:
                         self.send("PASS {0}".format(self.config.password))
-                    if self.config.sasl:
-                        self.caps.append("sasl")
-                    self.send("CAP REQ :{0}".format(" ".join(self.caps)))
                     if self.config.sasl:
                         self.do_sasl()
                     self.s_connected = True
