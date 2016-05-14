@@ -7,10 +7,9 @@ import pyfiglet, sys, requests, socks, socket, time, threading, os, glob, traceb
 import ssl as _ssl
 from base64 import b64encode
 import warnings
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
-# Hide the InsecureRequestWarning from urllib3
-warnings.filterwarnings("ignore", category=InsecureRequestWarning)
+if (sys.version_info > (3, 0)):
+    from importlib import reload
 
 class Socket(object):
     def __init__(self, ipv6=False, ssl=False, proxy=False, proxy_host=None, proxy_port=None, proxy_type=None):
