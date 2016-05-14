@@ -88,18 +88,18 @@ class ezzybot(Socket):
         for i in result:
             if i in self.mtimes:
                 if os.path.getmtime(i) != self.mtimes[i]:
-                    self.modules["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split("/")[-2])
+                    self.modules["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split(os.path.sep)[-2])
             else:
-                self.modules["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split("/")[-2])
+                self.modules["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split(os.path.sep)[-2])
         self.events = hook.events+self.events
     def reload_bot(self,info,conn):
         plugins={}
         for i in glob.glob(os.path.join(os.getcwd(), "plugins", "*", "*.py")):
             if i in self.mtimes:
                 if os.path.getmtime(i) != self.mtimes[i]:
-                    plugins["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split("/")[-2])
+                    plugins["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split(os.path.sep)[-2])
             else:
-                plugins["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split("/")[-2])
+                plugins["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split(os.path.sep)[-2])
         self.defaults()
         for pluginname, plugin in plugins.items():
             self.modules[pluginname] = reload(plugin)
