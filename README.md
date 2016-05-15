@@ -35,7 +35,9 @@ Or, install the development version
 sudo pip install git+https://github.com/Azure-Developments/ezzybot
 ```
 
-#[Wiki](https://github.com/Azure-Developments/ezzybot/wiki)
+**[Wiki for more](https://github.com/Azure-Developments/ezzybot/wiki)**
+
+------------
 
 Developer Links:
 * [Travis](https://travis-ci.org/Azure-Developments/ezzybot)
