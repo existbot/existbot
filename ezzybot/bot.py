@@ -9,6 +9,8 @@ from base64 import b64encode
 import warnings
 
 if (sys.version_info > (3, 0)):
+    from imp import reload
+if (sys.version_info > (3, 4)):
     from importlib import reload
 
 class Socket(object):
