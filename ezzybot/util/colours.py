@@ -1,5 +1,5 @@
 class colours(object):
-
+    ''' IRC String formatting'''
     def __init__(self):
         self.WHITE = "\x030"
         self.BLACK = "\x031"

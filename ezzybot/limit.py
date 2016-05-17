@@ -2,7 +2,7 @@ from .util import bucket as tokenbucket
 from . import wrappers
 
 class Limit(object):
-
+    '''Limits the use of commands'''
     def __init__(self, command_limiting_initial_tokens, command_limiting_message_cost, command_limiting_restore_rate, override, permissions):
         """limit(20, 4, 0.13, ["admin"], {"admin": "user!*@*"})
 

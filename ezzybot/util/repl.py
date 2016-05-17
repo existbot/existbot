@@ -1,7 +1,7 @@
 import code, sys
 
 class Repl(code.InteractiveConsole):
-
+    '''Interractive Python Console class'''
     def __init__(self, items=None):
         if items is None:
             items = {}
