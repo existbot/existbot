@@ -3,7 +3,9 @@ import socks
 required = ["nick", "host", "port"]
 
 class config(object):
+    '''Config class for the bot'''
     def __init__(self, config):
+        '''Takes dictionary and gets all information, if it is not in dictionary uses default'''
         self.host = config.get("host", "irc.freenode.net")
         self.port = config.get("port", 6667)
         self.ipv6 = config.get("IPv6", False)

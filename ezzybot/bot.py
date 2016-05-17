@@ -14,6 +14,7 @@ if (sys.version_info > (3, 4)):
     from importlib import reload
 
 class Socket(object):
+    '''Handles receiving and sending data'''
     def __init__(self, ipv6=False, ssl=False, proxy=False, proxy_host=None, proxy_port=None, proxy_type=None):
         self.attachments = []
         
@@ -57,15 +58,19 @@ class Socket(object):
             self.log.send(str(data))
 
 class ConfigError(Exception):
+    '''ConfigError Exception'''
     pass
 
 class SASLError(Exception):
+    '''SASLError Exception'''
     pass
 
 class NickRegain(Exception):
+    '''NickRegain Exception'''
     pass
 
 class ezzybot(Socket):
+    '''The ezzybot bot class'''
     def __init__(self, config=None):
         print(pyfiglet.Figlet(font='slant').renderText('EzzyBot {}'.format(__version__)))
         print(sys.version)

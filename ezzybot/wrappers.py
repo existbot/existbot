@@ -7,11 +7,12 @@ import sys
 import importlib
 
 class permissions_class(object):
-
+    '''Checks if someone has valid permissions'''
     def __init__(self, permissions):
         self.permissions = permissions # {"admin": "zz!*@*"}
 
     def check(self, perms, mask): # perms = # ["admin"]
+        '''Takes list and checks if they have valid permissions'''
         if perms == "all":
             return True
         for required_perm in perms:
