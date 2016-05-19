@@ -70,7 +70,6 @@ class NickRegain(Exception):
     pass
 
 class ezzybot(Socket):
-    '''The ezzybot bot class'''
     def __init__(self, config=None):
         print(pyfiglet.Figlet(font='slant').renderText('EzzyBot {}'.format(__version__)))
         print(sys.version)
@@ -79,6 +78,7 @@ class ezzybot(Socket):
         self.colours = colours.colours()
         self.colors = self.colours
         self.defaults()
+        self.ctcp = {"VERSION": 'EzzyBot {}'.format(__version__), "TIME": time.time}
     def defaults(self):
         self.mtimes = {}
         self.events = builtin.events
@@ -94,8 +94,10 @@ class ezzybot(Socket):
         for i in result:
             if i in self.mtimes:
                 if os.path.getmtime(i) != self.mtimes[i]:
+                    self.mtimes[i] = os.path.getmtime(i)
                     self.modules["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split(os.path.sep)[-2])
             else:
+                self.mtimes[i] = os.path.getmtime(i)
                 self.modules["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split(os.path.sep)[-2])
         self.events = hook.events+self.events
     def reload_bot(self,info,conn):
@@ -103,10 +105,17 @@ class ezzybot(Socket):
         for i in glob.glob(os.path.join(os.getcwd(), "plugins", "*", "*.py")):
             if i in self.mtimes:
                 if os.path.getmtime(i) != self.mtimes[i]:
+                    self.mtimes[i] = os.path.getmtime(i)
+                    conn.msg(info.channel, "Reloading "+i.split(os.path.sep)[-2])
                     plugins["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split(os.path.sep)[-2])
             else:
                 plugins["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split(os.path.sep)[-2])
+                conn.msg(info.channel, "New plugin: "+i.split(os.path.sep)[-2])
+                self.mtimes[i] = os.path.getmtime(i)
         self.defaults()
+        #hook.events = []
+        print(hook.events)
+        
         for pluginname, plugin in plugins.items():
             self.modules[pluginname] = reload(plugin)
         self.events = self.events+hook.events
@@ -127,6 +136,8 @@ class ezzybot(Socket):
         if not os.path.exists(self.db_loc):
             os.makedirs(os.path.dirname(self.db_loc))
         self.db = thingdb.thing(os.path.join(self.db_loc, "state.db"))
+        if "users" not in self.db.keys():
+            self.db['users'] = {}
         #Set some attributes for things
         self.limit = Limit(self.config.command_limiting_initial_tokens, self.config.command_limiting_message_cost, self.config.command_limiting_restore_rate, self.config.limit_override, self.config.permissions)
         
@@ -136,6 +147,7 @@ class ezzybot(Socket):
         self.importPlugins()
         
         self._connect()
+    go = run
     def _connect(self):
         Socket.__init__(self, self.config.ipv6, self.config.ssl, self.config.proxy, self.config.proxy_host, self.config.proxy_port, self.config.proxy_type)
         self.connect((self.config.host, self.config.port))
@@ -146,8 +158,10 @@ class ezzybot(Socket):
         self.ping_timer.daemon = True
         
         self.repl = repl.Repl({"bot": self, "irc": self.socket, "conn": wrappers.connection_wrapper(self)})
-        
-        self.loop()
+        try:
+            self.loop()
+        except:
+            self.db.close()
     
     def ping(self):
         now = time.time()
@@ -246,6 +260,14 @@ class ezzybot(Socket):
                     self._info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args, "raw": self.ircmsg}
                     self.info = other.toClass(self._info)
                     info=self.info
+                    if self.message.startswith("\x01"):
+                        ctcp = self.message.replace("\x01", "").upper()
+                        if ctcp in self.ctcp.keys():
+                            if callable(self.ctcp[ctcp]):
+                                result = self.ctcp[ctcp]()
+                            else:
+                                result = self.ctcp[ctcp]
+                            self.send("NOTICE {0} :{1} {2}".format(self.nick, ctcp, result))
                     for function in [func for func in self.events if func._event == "command"]:
                         if (function._prefix+function._commandname).lower() == self.command:
                             func = function
@@ -268,6 +290,15 @@ class ezzybot(Socket):
                             self._info['regex'] = result
                             self.info = other.toClass(self._info)
                             self.run_trigger(regex, wrappers.connection_wrapper(self), self.info)
+                    if self.nick not in self.db['users'].keys():
+                        self.db['users'][info.nick] = {}
+                    self.db['users'][info.nick]['last_seen'] = time.time()
+                    self.db['users'][info.nick]['last_msg'] = self.ircmsg
+                    self.db['users'][info.nick]['mask'] = self.mask
+                    if "channels" not in self.db['users'][info.nick].keys():
+                        self.db['users'][info.nick]['channels']=[]
+                    if info.channel not in self.db['users'][info.nick]['channels']:
+                        self.db['users'][info.nick]['channels'].append(info.channel)
                 for trigger in [func for func in self.events if func._event == "trigger"]:
                     if trigger._trigger == "*" or trigger._trigger.upper() == split_message[1].upper():
                         self.run_trigger(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}))
