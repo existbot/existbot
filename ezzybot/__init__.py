@@ -1,6 +1,6 @@
 from .bot import *
 
-__version__ = "2.0.0-git"
+__version__ = "2.0.1-git"
 
 def cmd():
     import argparse,json
