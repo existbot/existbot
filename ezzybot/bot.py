@@ -199,6 +199,13 @@ class ezzybot(Socket):
                     raise SASLError(error)
 
     def loop(self):
+        if self.config.password is not None:
+            self.send("PASS {0}".format(self.config.password))
+        if self.config.sasl:
+            self.do_sasl()
+        self.s_connected = True
+        self.send("USER {0} * * :{1}".format(self.config.ident, self.config.realname))
+        self.send("NICK {0}".format(self.config.nick))
         while True:
             self.received = self.printrecv()
             for received_message in self.received:
@@ -215,14 +222,6 @@ class ezzybot(Socket):
                         self.ping_timer.cancel()
                     self.close()
                     self._connect()
-                if not self.s_connected and split_message[1] == "NOTICE":
-                    if self.config.password is not None:
-                        self.send("PASS {0}".format(self.config.password))
-                    if self.config.sasl:
-                        self.do_sasl()
-                    self.s_connected = True
-                    self.send("USER {0} * * :{1}".format(self.config.ident, self.config.realname))
-                    self.send("NICK {0}".format(self.config.nick))
                 if not self.connected:
                     if split_message[1] == "433" or split_message[1] == "437":
                         self.do_regain = True
