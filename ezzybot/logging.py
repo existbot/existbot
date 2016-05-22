@@ -1,4 +1,5 @@
 from time import strftime
+import sys
 import os
 
 def check_dir(path):
@@ -18,28 +19,32 @@ class log(object):
         
     def error(self, message):
         '''Writes message with ERROR tag and time to the log file'''
-        message = message.encode("UTF-8", "ignore")
+        if sys.version_info.major == 2:
+            message = message.encode("UTF-8", "ignore")
         message = strftime("[%m/%d/%Y][%H:%M:%S][ERROR] {0}".format(message))
         print(message)
         self.write(message)
     
     def debug(self, message):
         '''Writes message with DEBUG tag to the log file'''
-        message = message.encode("UTF-8", "ignore")
+        if sys.version_info.major == 2:
+            message = message.encode("UTF-8", "ignore")
         message = strftime("[%m/%d/%Y][%H:%M:%S][DEBUG] {0}".format(message))
         print(message)
         self.write(message)
     
     def send(self, message):
         '''Writes message with the SEND tag to the log file'''
-        message = message.encode("UTF-8", "ignore")
+        if sys.version_info.major == 2:
+            message = message.encode("UTF-8", "ignore")
         message = strftime("[%m/%d/%Y][%H:%M:%S][SEND] {0}".format(message))
         print(message)
         self.write(message)
     
     def receive(self, message):
         '''Writes message with the RECIEVE tag to the log file'''
-        message = message.encode("UTF-8", "ignore")
+        if sys.version_info.major == 2:
+            message = message.encode("UTF-8", "ignore")
         message = strftime("[%m/%d/%Y][%H:%M:%S][RECV] {0}".format(message))
         print(message)
         self.write(message)
