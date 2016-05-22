@@ -50,7 +50,7 @@ Devs are:
 
 Wiki team:
 * iovoid DOGE: DBvRFywkgZ6EyCN6mWHv8ypeoDHaaxed5C
-* OverCoder: T3ZlckNvZGVy
+* OverCoder
 
 Wanna know more? (IRC) Freenode: #ezzybot
 
