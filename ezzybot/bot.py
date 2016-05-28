@@ -83,48 +83,6 @@ class ezzybot(Socket):
         self.mtimes = {}
         self.events = builtin.events
         self.modules = {}
-        if self.reload_bot not in self.events:
-            self.events.append(self.reload_bot)
-    def importPlugins(self):
-        """importPlugins
-        Imports plugins from plugins/ folder
-        """
-        result = glob.glob(os.path.join(os.getcwd(), "plugins", "*", "*.py"))
-        hook.events = []
-        for i in result:
-            if i in self.mtimes:
-                if os.path.getmtime(i) != self.mtimes[i]:
-                    self.mtimes[i] = os.path.getmtime(i)
-                    self.modules["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split(os.path.sep)[-2])
-            else:
-                self.mtimes[i] = os.path.getmtime(i)
-                self.modules["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split(os.path.sep)[-2])
-        self.events = hook.events+self.events
-    def reload_bot(self,info,conn):
-        plugins={}
-        for i in glob.glob(os.path.join(os.getcwd(), "plugins", "*", "*.py")):
-            if i in self.mtimes:
-                if os.path.getmtime(i) != self.mtimes[i]:
-                    self.mtimes[i] = os.path.getmtime(i)
-                    conn.msg(info.channel, "Reloading "+i.split(os.path.sep)[-2])
-                    plugins["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split(os.path.sep)[-2])
-            else:
-                plugins["plugins."+i.split(os.path.sep)[-2]] = __import__("plugins."+i.split(os.path.sep)[-2])
-                conn.msg(info.channel, "New plugin: "+i.split(os.path.sep)[-2])
-                self.mtimes[i] = os.path.getmtime(i)
-        self.defaults()
-        #hook.events = []
-        print(hook.events)
-        
-        for pluginname, plugin in plugins.items():
-            self.modules[pluginname] = reload(plugin)
-        self.events = self.events+hook.events
-    reload_bot._commandname = "reload"
-    reload_bot._prefix = "!"
-    reload_bot._help = reload_bot.__doc__
-    reload_bot._perms = ["admin"]
-    reload_bot._event = "command"
-    reload_bot._thread = False
     def run(self, config=None):
         if self.config is None and config is None:
             raise ConfigError("No config specified.")
@@ -144,7 +102,7 @@ class ezzybot(Socket):
         self.pingfreq = 15
         self.timeout = self.pingfreq * 2
         
-        self.importPlugins()
+        #self.importPlugins()
         
         self._connect()
     go = run
@@ -160,8 +118,12 @@ class ezzybot(Socket):
         self.repl = repl.Repl({"bot": self, "irc": self.socket, "conn": wrappers.connection_wrapper(self)})
         try:
             self.loop()
-        except:
+        except KeyboardInterrupt:
+            print("Stopping..")
+        finally:
+            self.socket.close()
             self.db.close()
+            
     
     def ping(self):
         now = time.time()
@@ -276,7 +238,7 @@ class ezzybot(Socket):
                                     self.plugin_wrapper=wrappers.connection_wrapper(self)
                                     if func._thread:
                                         plugin_thread= threading.Thread(target=self.run_plugin, args=(func, self.plugin_wrapper,self.channel,self.info,))
-                                        plugin_thread.setDaemon(True)
+                                        plugin_thread.daemon = True
                                         plugin_thread.start()
                                     else:
                                         self.run_plugin(func, self.plugin_wrapper,self.channel,self.info)
@@ -301,7 +263,37 @@ class ezzybot(Socket):
                 for trigger in [func for func in self.events if func._event == "trigger"]:
                     if trigger._trigger == "*" or trigger._trigger.upper() == split_message[1].upper():
                         self.run_trigger(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}))
-                        
+                for module in glob.glob(os.path.join(os.getcwd(), "plugins", "*.py")):
+                    import_name = "plugins."+module.split(os.path.sep)[-1].strip(".py")
+                    if import_name in self.mtimes.keys():
+                        if os.path.getmtime(module) != self.mtimes[import_name]:
+                            for event in self.events:
+                                print event._module, import_name
+                                if event._module == import_name:
+                                    print("Deleting a old event from {0} ({1})".format(module, event))
+                                    del self.events[self.events.index(event)]
+                            commit = __import__(import_name)
+                            print hook.events
+                            hook.events = []
+                            self.modules[import_name] = reload(commit)
+                            print hook.events
+                            #add module attribute
+                            for event in hook.events:
+                                print("New event found "+event)
+                                hook.events[hook.events.index(event)]._module = import_name
+                            self.mtimes[import_name] = os.path.getmtime(module)
+                            print("Reloaded plugin " + module)
+                            self.events = hook.events+self.events
+                            print self.events
+                    else:
+                        hook.events = []
+                        self.modules[import_name] = __import__(import_name)
+                        #add module attribute
+                        for event in hook.events:
+                            hook.events[hook.events.index(event)]._module = import_name
+                        self.mtimes[import_name] = os.path.getmtime(module)
+                        print("New plugin "+module)
+                        self.events = hook.events+self.events
     def run_plugin(self, function, plugin_wrapper, channel, info):
         """run_plugin(hello, plugin_wrapper, channel, info)
         Runs function and prints result/error to irc.
