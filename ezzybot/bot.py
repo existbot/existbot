@@ -3,10 +3,9 @@ from .util.config import config as Config
 from .limit import Limit
 from . import wrappers, builtin, util, logging
 from .util import hook, colours, repl, other
-import pyfiglet, sys, requests, socks, socket, time, threading, os, glob, traceback, re, glob, thingdb
+import pyfiglet, sys, requests, socks, socket, time, threading, os, glob, traceback, re, glob, thingdb, warnings, importlib
 import ssl as _ssl
 from base64 import b64encode
-import warnings
 
 if (sys.version_info > (3, 0)):
     from imp import reload
@@ -83,6 +82,12 @@ class ezzybot(Socket):
         self.mtimes = {}
         self.events = builtin.events
         self.modules = {}
+    def importmodule(self, module_name, path, do_reload=False):
+        self.modules[module_name] = importlib.import_module(module_name)
+        if do_reload:
+            hook.events=[]
+            self.modules[module_name] = reload(self.modules[module_name])
+        self.mtimes[module_name] = os.path.getmtime(path)
     def run(self, config=None):
         if self.config is None and config is None:
             raise ConfigError("No config specified.")
@@ -268,31 +273,24 @@ class ezzybot(Socket):
                     if import_name in self.mtimes.keys():
                         if os.path.getmtime(module) != self.mtimes[import_name]:
                             for event in self.events:
-                                print event._module, import_name
                                 if event._module == import_name:
                                     print("Deleting a old event from {0} ({1})".format(module, event))
                                     del self.events[self.events.index(event)]
-                            commit = __import__(import_name)
-                            print hook.events
-                            hook.events = []
-                            self.modules[import_name] = reload(commit)
-                            print hook.events
+                            hook.events=[]
+                            self.importmodule(import_name, module, True)
                             #add module attribute
                             for event in hook.events:
-                                print("New event found "+event)
+                                print("New event found "+str(event))
                                 hook.events[hook.events.index(event)]._module = import_name
-                            self.mtimes[import_name] = os.path.getmtime(module)
-                            print("Reloaded plugin " + module)
+                            print("Reloaded plugin " + str(module))
                             self.events = hook.events+self.events
-                            print self.events
                     else:
                         hook.events = []
-                        self.modules[import_name] = __import__(import_name)
+                        self.importmodule(import_name, module)
                         #add module attribute
                         for event in hook.events:
                             hook.events[hook.events.index(event)]._module = import_name
-                        self.mtimes[import_name] = os.path.getmtime(module)
-                        print("New plugin "+module)
+                        print("New plugin "+str(module))
                         self.events = hook.events+self.events
     def run_plugin(self, function, plugin_wrapper, channel, info):
         """run_plugin(hello, plugin_wrapper, channel, info)
