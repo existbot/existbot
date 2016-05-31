@@ -286,11 +286,12 @@ class ezzybot(Socket):
                             for event in hook.events:
                                 print("New event found "+str(event))
                                 hook.events[hook.events.index(event)].__module__ = import_name
-                                
-                                #Bowserinator's code to fix old events not being deleted :D :D
-                                for evn in self.events: #delete duplicates
+
+                                for evn in self.events: 
+                                    #Delete duplicates
                                     if hook.events[hook.events.index(event)].__name__ == evn.__name__:
                                         del self.events[self.events.index(evn)]
+                                    #Delete renamed events
                                     if evn.__module__ == import_name and evn.__name__ not in [e.__name__ for e in hook.events]:
                                         del self.events[self.events.index(evn)]
                             
