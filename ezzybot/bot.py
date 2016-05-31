@@ -265,15 +265,17 @@ class ezzybot(Socket):
                         self.db['users'][info.nick]['channels']=[]
                     if info.channel not in self.db['users'][info.nick]['channels']:
                         self.db['users'][info.nick]['channels'].append(info.channel)
+                
                 for trigger in [func for func in self.events if func._event == "trigger"]:
                     if trigger._trigger == "*" or trigger._trigger.upper() == split_message[1].upper():
                         self.run_trigger(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}))
+                
                 for module in glob.glob(os.path.join(os.getcwd(), "plugins", "*.py")):
                     import_name = "plugins."+module.split(os.path.sep)[-1].strip(".py")
                     if import_name in self.mtimes.keys():
                         if os.path.getmtime(module) != self.mtimes[import_name]:
                             for event in self.events:
-                                if event._module == import_name:
+                                if event.__module__ == import_name:
                                     print("Deleting a old event from {0} ({1})".format(module, event))
                                     del self.events[self.events.index(event)]
                             hook.events=[]
@@ -289,9 +291,10 @@ class ezzybot(Socket):
                         self.importmodule(import_name, module)
                         #add module attribute
                         for event in hook.events:
-                            hook.events[hook.events.index(event)]._module = import_name
+                            hook.events[hook.events.index(event)].__module__ = import_name
                         print("New plugin "+str(module))
-                        self.events = hook.events+self.events
+                        self.events = hook.events
+                        
     def run_plugin(self, function, plugin_wrapper, channel, info):
         """run_plugin(hello, plugin_wrapper, channel, info)
         Runs function and prints result/error to irc.
