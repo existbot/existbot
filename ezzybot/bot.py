@@ -268,22 +268,35 @@ class ezzybot(Socket):
                 for trigger in [func for func in self.events if func._event == "trigger"]:
                     if trigger._trigger == "*" or trigger._trigger.upper() == split_message[1].upper():
                         self.run_trigger(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}))
+                
+                #TODO FIX
                 for module in glob.glob(os.path.join(os.getcwd(), "plugins", "*.py")):
                     import_name = "plugins."+module.split(os.path.sep)[-1].strip(".py")
                     if import_name in self.mtimes.keys():
                         if os.path.getmtime(module) != self.mtimes[import_name]:
                             for event in self.events:
-                                if event._module == import_name:
+                                if event.__module__ == import_name:
                                     print("Deleting a old event from {0} ({1})".format(module, event))
                                     del self.events[self.events.index(event)]
+                            
                             hook.events=[]
                             self.importmodule(import_name, module, True)
+                            
                             #add module attribute
                             for event in hook.events:
                                 print("New event found "+str(event))
-                                hook.events[hook.events.index(event)]._module = import_name
+                                hook.events[hook.events.index(event)].__module__ = import_name
+
+                                for evn in self.events: 
+                                    #Delete duplicates
+                                    if hook.events[hook.events.index(event)].__name__ == evn.__name__:
+                                        del self.events[self.events.index(evn)]
+                                    #Delete renamed events
+                                    if evn.__module__ == import_name and evn.__name__ not in [e.__name__ for e in hook.events]:
+                                        del self.events[self.events.index(evn)]
+                            
                             print("Reloaded plugin " + str(module))
-                            self.events = hook.events+self.events
+                            self.events = hook.events + self.events
                     else:
                         hook.events = []
                         self.importmodule(import_name, module)
@@ -292,6 +305,8 @@ class ezzybot(Socket):
                             hook.events[hook.events.index(event)]._module = import_name
                         print("New plugin "+str(module))
                         self.events = hook.events+self.events
+                        
+                        
     def run_plugin(self, function, plugin_wrapper, channel, info):
         """run_plugin(hello, plugin_wrapper, channel, info)
         Runs function and prints result/error to irc.
