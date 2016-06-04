@@ -203,7 +203,7 @@ class ezzybot(Socket):
                     self.connected = True
                     self.last_ping = time.time()
                     self.ping_timer.start()
-                    if self.config.do_auth or self.config.sasl and self.do_regain:
+                    if (self.config.do_auth or self.config.sasl) and self.do_regain:
                         self.do_regain = False
                         self.send("PRIVMSG NickServ :REGAIN {0} {1}".format(self.config.first_nick, self.config.auth_pass))
                         time.sleep(3)
