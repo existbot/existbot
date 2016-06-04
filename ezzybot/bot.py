@@ -284,30 +284,30 @@ class ezzybot(Socket):
                             
                             #add module attribute
                             for event in hook.events:
-                                print("New {0} found: {1}".format(event._event, event.__name__))
+                                self.log.debug("New {0} found: {1}".format(event._event, event.__name__))
                                 hook.events[hook.events.index(event)].__module__ = import_name
 
                                 #for evn in self.events: 
                                 for evn in [e for e in self.events if e.__module__ == import_name]:
                                     #Delete duplicates
                                     if hook.events[hook.events.index(event)].__name__ == evn.__name__:
-                                        print("Deleting a old {0}: {1}".format(evn._event, evn.__name__))
+                                        self.log.debug("Deleting a old {0}: {1}".format(evn._event, evn.__name__))
                                         del self.events[self.events.index(evn)]
                                     #Delete renamed events
                                     if evn.__module__ == import_name and evn.__name__ not in [e.__name__ for e in hook.events]:
-                                        print("Deleting a old {0}: {1}".format(evn._event, evn.__name__))
+                                        self.log.debug("Deleting a old {0}: {1}".format(evn._event, evn.__name__))
                                         del self.events[self.events.index(evn)]
                             
-                            print("Reloaded plugin " + str(module))
+                            self.log.debug("Reloaded plugin " + str(module))
                             self.events = hook.events + self.events
                     else:
                         hook.events = []
                         self.importmodule(import_name, module)
                         #add module attribute
                         for event in hook.events:
-                            print("New {0} found: {1}".format(event._event, event.__name__))
+                            self.log.debug("New {0} found: {1}".format(event._event, event.__name__))
                             hook.events[hook.events.index(event)].__module__ = import_name
-                        print("New plugin "+str(module))
+                        self.log.debug("New plugin "+str(module))
                         self.events = hook.events+self.events
                         
                         
