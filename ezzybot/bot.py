@@ -288,7 +288,7 @@ class ezzybot(Socket):
                                 hook.events[hook.events.index(event)].__module__ = import_name
 
                                 #for evn in self.events: 
-                                for evn in [e for e in self.events if e._module == import_name]:
+                                for evn in [e for e in self.events if e.__module__ == import_name]:
                                     #Delete duplicates
                                     if hook.events[hook.events.index(event)].__name__ == evn.__name__:
                                         print("Deleting a old {0}: {1}".format(evn._event, evn.__name__))
@@ -305,7 +305,8 @@ class ezzybot(Socket):
                         self.importmodule(import_name, module)
                         #add module attribute
                         for event in hook.events:
-                            hook.events[hook.events.index(event)]._module = import_name
+                            print("New {0} found: {1}".format(event._event, event.__name__))
+                            hook.events[hook.events.index(event)].__module__ = import_name
                         print("New plugin "+str(module))
                         self.events = hook.events+self.events
                         
