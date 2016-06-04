@@ -274,25 +274,28 @@ class ezzybot(Socket):
                     import_name = "plugins."+module.split(os.path.sep)[-1].strip(".py")
                     if import_name in self.mtimes.keys():
                         if os.path.getmtime(module) != self.mtimes[import_name]:
-                            for event in self.events:
-                                if event.__module__ == import_name:
-                                    print("Deleting a old event from {0} ({1})".format(module, event))
-                                    del self.events[self.events.index(event)]
+                            #for event in self.events:
+                            #    if event.__module__ == import_name:
+                            #        print("Deleting a old event from {0}".format(module))
+                            #        del self.events[self.events.index(event)]
                             
                             hook.events=[]
                             self.importmodule(import_name, module, True)
                             
                             #add module attribute
                             for event in hook.events:
-                                print("New event found "+str(event))
+                                print("New {0} found: {1}".format(event._event, event.__name__))
                                 hook.events[hook.events.index(event)].__module__ = import_name
 
-                                for evn in self.events: 
+                                #for evn in self.events: 
+                                for evn in [e for e in self.events if e._module == import_name]:
                                     #Delete duplicates
                                     if hook.events[hook.events.index(event)].__name__ == evn.__name__:
+                                        print("Deleting a old {0}: {1}".format(evn._event, evn.__name__))
                                         del self.events[self.events.index(evn)]
                                     #Delete renamed events
                                     if evn.__module__ == import_name and evn.__name__ not in [e.__name__ for e in hook.events]:
+                                        print("Deleting a old {0}: {1}".format(evn._event, evn.__name__))
                                         del self.events[self.events.index(evn)]
                             
                             print("Reloaded plugin " + str(module))
