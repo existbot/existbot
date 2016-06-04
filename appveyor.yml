@@ -1,3 +1,5 @@
+cache:
+    - "%LOCALAPPDATA%\\pip"
 environment:
     matrix:
         - PYTHON: "C:\\Python27"
