@@ -83,10 +83,17 @@ class ezzybot(Socket):
         self.events = builtin.events
         self.modules = {}
     def importmodule(self, module_name, path, do_reload=False):
-        self.modules[module_name] = importlib.import_module(module_name)
-        if do_reload:
-            hook.events=[]
-            self.modules[module_name] = reload(self.modules[module_name])
+        try:
+            self.modules[module_name] = importlib.import_module(module_name)
+            if do_reload:
+                hook.events=[]
+                self.modules[module_name] = reload(self.modules[module_name])
+        except:
+            exc_type, exc_value, exc_tb = sys.exc_info()
+            self.log.error("Unable to (re)load {0}:".format(module_name))
+            for line in exc_tb.splitlines():
+                self.log.debug(line)
+            self.log.error("{0}: {1}".format(exc_type.__name__, exc_value))
         self.mtimes[module_name] = os.path.getmtime(path)
     def run(self, config=None):
         if self.config is None and config is None:
