@@ -270,6 +270,9 @@ class ezzybot(Socket):
                     self._info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args, "raw": self.ircmsg}
                     self.info = other.toClass(self._info)
                     info=self.info
+                    permissions_wrapper = wrappers.permissions_class(self.config.permissions)
+                    if permissions_wrapper.check(["ignore"], self.mask):
+                        continue
                     if self.message.startswith("\x01"):
                         ctcp = self.message.replace("\x01", "").upper()
                         if ctcp in self.ctcp.keys():
@@ -281,7 +284,6 @@ class ezzybot(Socket):
                     for function in [func for func in self.events if func._event == "command"]:
                         if (function._prefix+function._commandname).lower() == self.command:
                             func = function
-                            permissions_wrapper = wrappers.permissions_class(self.config.permissions)
                             if permissions_wrapper.check(func._perms, self.mask) or func._perms == "all":
                                 if self.limit.command_limiter(info):
                                     self.plugin_wrapper=wrappers.connection_wrapper(self)
