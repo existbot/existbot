@@ -1,4 +1,4 @@
-import code, sys
+import code, sys, io
 
 class Repl(code.InteractiveConsole):
     '''Interractive Python Console class'''
@@ -12,11 +12,10 @@ class Repl(code.InteractiveConsole):
         self._buffer += str(data)
 
     def run(self, data):
-        sys.stdout = self
+        sys.stdout = result = io.StringIO()
         self.push(data)
         sys.stdout = sys.__stdout__
-        result = self._buffer
-        self._buffer = ""
+        result = out.getvalue()
         return result
 
     def showtraceback(self):
