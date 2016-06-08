@@ -30,7 +30,6 @@ class log(object):
         if sys.version_info.major == 2:
             message = message.encode("UTF-8", "ignore")
         message = strftime("[%m/%d/%Y][%H:%M:%S][DEBUG] {0}".format(message))
-        print(message)
         self.write(message)
     
     def send(self, message):
@@ -38,7 +37,6 @@ class log(object):
         if sys.version_info.major == 2:
             message = message.encode("UTF-8", "ignore")
         message = strftime("[%m/%d/%Y][%H:%M:%S][SEND] {0}".format(message))
-        print(message)
         self.write(message)
     
     def receive(self, message):
@@ -46,11 +44,11 @@ class log(object):
         if sys.version_info.major == 2:
             message = message.encode("UTF-8", "ignore")
         message = strftime("[%m/%d/%Y][%H:%M:%S][RECV] {0}".format(message))
-        print(message)
         self.write(message)
     
     def write(self, message):
         '''Writes messages to the log'''
+        sys.__stdout__.write(message+"\n")
         if self.write_log:
             if message.replace(" ","").replace("\n","") != "":
                 with open(os.path.join(self.logging_file, "bot.log"), "a") as log:
