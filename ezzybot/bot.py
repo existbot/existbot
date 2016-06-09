@@ -182,7 +182,7 @@ class ezzybot(Socket):
             for received_message in self.received:
                 #TODO FIX
                 for module in glob.glob(os.path.join(os.getcwd(), "plugins", "*.py")):
-                    import_name = "plugins."+module.split(os.path.sep)[-1].strip(".py")
+                    import_name = "plugins."+module.split(os.path.sep)[-1][:-3]
                     if import_name in self.mtimes.keys():
                         if os.path.getmtime(module) != self.mtimes[import_name]:
                             #for event in self.events:
