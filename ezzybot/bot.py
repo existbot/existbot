@@ -282,7 +282,8 @@ class ezzybot(Socket):
                                 result = self.ctcp[ctcp]
                             self.send("NOTICE {0} :{1} {2}".format(self.nick, ctcp, result))
                     for function in [func for func in self.events if func._event == "command"]:
-                        if (function._prefix+function._commandname).lower() == self.command:
+                        if (function._prefix+function._commandname).lower() == self.command or (
+                            function._commandname.lower() == self.command and self.channel == self.config.nick):
                             func = function
                             if permissions_wrapper.check(func._perms, self.mask) or func._perms == "all":
                                 if self.limit.command_limiter(info):
