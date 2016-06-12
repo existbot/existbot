@@ -302,7 +302,12 @@ class ezzybot(Socket):
                         if result:
                             self._info['regex'] = result
                             self.info = other.toClass(self._info)
-                            self.run_trigger(regex, wrappers.connection_wrapper(self), self.info)
+                            if regex._thread:
+                                regex_thread = threading.Thread(target=self.run_trigger, args=(regex, wrappers.connection_wrapper(self), self.info))
+                                regex_thread.daemon = True
+                                plugin_thread.start()
+                            else:
+                                self.run_trigger(regex, wrappers.connection_wrapper(self), self.info)
                     if self.nick not in self.db['users'].keys():
                         self.db['users'][info.nick] = {}
                     self.db['users'][info.nick]['last_seen'] = time.time()
