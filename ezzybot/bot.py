@@ -305,7 +305,7 @@ class ezzybot(Socket):
                             if regex._thread:
                                 regex_thread = threading.Thread(target=self.run_trigger, args=(regex, wrappers.connection_wrapper(self), self.info))
                                 regex_thread.daemon = True
-                                plugin_thread.start()
+                                regex_thread.start()
                             else:
                                 self.run_trigger(regex, wrappers.connection_wrapper(self), self.info)
                     if self.nick not in self.db['users'].keys():
