@@ -314,7 +314,12 @@ class ezzybot(Socket):
                         self.db['users'][info.nick]['channels'].append(info.channel)
                 for trigger in [func for func in self.events if func._event == "trigger"]:
                     if trigger._trigger == "*" or trigger._trigger.upper() == split_message[1].upper():
-                        self.run_trigger(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}))
+                        if trigger._thread:
+                            trigger_thread = threading.Thread(target=self.run_trigger, args=(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}),))
+                            trigger_thread.daemon = True
+                            trigger_thread.start()
+                        else:
+                            self.run_trigger(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}))
 
     def run_plugin(self, function, plugin_wrapper, channel, info):
         """run_plugin(hello, plugin_wrapper, channel, info)
