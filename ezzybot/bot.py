@@ -282,7 +282,8 @@ class ezzybot(Socket):
                                 result = self.ctcp[ctcp]
                             self.send("NOTICE {0} :{1} {2}".format(self.nick, ctcp, result))
                     for function in [func for func in self.events if func._event == "command"]:
-                        if (function._prefix+function._commandname).lower() == self.command:
+                        if (function._prefix+function._commandname).lower() == self.command or (
+                            function._commandname.lower() == self.command and self.channel == self.config.nick):
                             func = function
                             if permissions_wrapper.check(func._perms, self.mask) or func._perms == "all":
                                 if self.limit.command_limiter(info):
@@ -301,7 +302,12 @@ class ezzybot(Socket):
                         if result:
                             self._info['regex'] = result
                             self.info = other.toClass(self._info)
-                            self.run_trigger(regex, wrappers.connection_wrapper(self), self.info)
+                            if regex._thread:
+                                regex_thread = threading.Thread(target=self.run_trigger, args=(regex, wrappers.connection_wrapper(self), self.info))
+                                regex_thread.daemon = True
+                                regex_thread.start()
+                            else:
+                                self.run_trigger(regex, wrappers.connection_wrapper(self), self.info)
                     if self.nick not in self.db['users'].keys():
                         self.db['users'][info.nick] = {}
                     self.db['users'][info.nick]['last_seen'] = time.time()
@@ -313,7 +319,12 @@ class ezzybot(Socket):
                         self.db['users'][info.nick]['channels'].append(info.channel)
                 for trigger in [func for func in self.events if func._event == "trigger"]:
                     if trigger._trigger == "*" or trigger._trigger.upper() == split_message[1].upper():
-                        self.run_trigger(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}))
+                        if trigger._thread:
+                            trigger_thread = threading.Thread(target=self.run_trigger, args=(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}),))
+                            trigger_thread.daemon = True
+                            trigger_thread.start()
+                        else:
+                            self.run_trigger(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}))
 
     def run_plugin(self, function, plugin_wrapper, channel, info):
         """run_plugin(hello, plugin_wrapper, channel, info)
