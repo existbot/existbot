@@ -41,7 +41,7 @@ class Socket(object):
             self.data += self.part
         print("[OverDebug:self.data] " + str(self.data))
         print("[OverDebug:self.data.splitlines()] " + str(self.data.splitlines()))
-        self.data = self.data.split("\r\n")
+        self.data = self.data.strip().split("\r\n")
         return self.data
     def printrecv(self):
         self.received_message = self.recv()
