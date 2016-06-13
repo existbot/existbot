@@ -39,6 +39,8 @@ class Socket(object):
             self.part = self.socket.recv(2048)
             self.part = self.part.decode("UTF-8", "ignore")
             self.data += self.part
+        print("[OverDebug:self.data] " + str(self.data))
+        print("[OverDebug:self.data.splitlines()] " + str(self.data.splitlines()))
         self.data = self.data.splitlines()
         return self.data
     def printrecv(self):
