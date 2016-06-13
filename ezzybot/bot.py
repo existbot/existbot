@@ -221,7 +221,9 @@ class ezzybot(Socket):
                         self.log.debug("New plugin "+str(module))
                         self.events = hook.events+self.events
                 received_message = received_message.replace(":", "", 1)
+                print("[OverDebug:received_message] " + str(received_message))
                 split_message = received_message.split(" ")
+                print("[OverDebug:split_message] " + str(split_message))
                 if split_message[0] == "PING":
                     self.send("PONG {0}".format(" ".join(split_message[1:])))
                 if split_message[1] == "PONG":
