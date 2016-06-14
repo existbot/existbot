@@ -39,7 +39,7 @@ class Socket(object):
             self.part = self.socket.recv(2048)
             self.part = self.part.decode("UTF-8", "ignore")
             self.data += self.part
-        self.data = self.data.splitlines()
+        self.data = self.data.strip().split("\r\n")
         return self.data
     def printrecv(self):
         self.received_message = self.recv()
