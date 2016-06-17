@@ -1,27 +1,27 @@
-# ezzybot [![Build Status](https://travis-ci.org/Azure-Developments/ezzybot.svg?branch=master)](https://travis-ci.org/Azure-Developments/ezzybot) [![Codacy Badge](https://api.codacy.com/project/badge/grade/6f9c84a479754bbb945d6ac4cf4cdbb1)](https://www.codacy.com/app/me_64/ezzybot) [![PyPI](https://img.shields.io/pypi/dm/ezzybot.svg)](https://pypi.python.org/pypi/ezzybot) [![Stories in Ready](https://badge.waffle.io/Azure-Developments/ezzybot.png?label=ready&title=Ready)](https://waffle.io/ezzybot/ezzybot)
+# ezzybot [![Build Status](https://travis-ci.org/Azure-Developments/ezzybot.svg?branch=master)](https://travis-ci.org/Azure-Developments/ezzybot) [![Build status](https://ci.appveyor.com/api/projects/status/63qr3ivc277p9xwp?svg=true)](https://ci.appveyor.com/project/IndigoTiger/ezzybot) [![Codacy Badge](https://api.codacy.com/project/badge/grade/6f9c84a479754bbb945d6ac4cf4cdbb1)](https://www.codacy.com/app/me_64/ezzybot) [![PyPI](https://img.shields.io/pypi/dm/ezzybot.svg)](https://pypi.python.org/pypi/ezzybot) [![Stories in Ready](https://badge.waffle.io/Azure-Developments/ezzybot.png?label=ready&title=Ready)](https://waffle.io/ezzybot/ezzybot)
 EzzyBot is a IRC bot framework built in python.
 ```python
 from ezzybot import bot
 
-mybot = bot()
-
 config = {  
-   "nick":"EzzyBot",
-   "channels":["#ezzybot", "#ezzybot-debug", "#ezzybot-bots"],
-   "port":6667,
-   "SSL":False,
-   "SASL":True,
+   "nick": "EzzyBot",
+   "channels": ["#ezzybot", "#ezzybot-debug", "#ezzybot-bots"],
+   "port": 6667,
+   "SSL": False,
+   "SASL": True,
    "do_auth": False,
    "auth_user": "ezzybot",
    "auth_pass": "<password>",
-   "quit_message":"Default quit reason",
+   "quit_message": "Default quit reason",
    "permissions": {
        "admin": ["*!ident@host"]
     },
     "log_channel": "#ezzybot-debug"
 }
 
-mybot.run(config)
+mybot = bot(config)
+
+mybot.run()
 ```
 
 Installation

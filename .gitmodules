@@ -1,0 +1,3 @@
+[submodule "ezzybot/connectionmgr"]
+	path = ezzybot/connectionmgr
+	url = https://github.com/itslukej/ConnectionMgr.git

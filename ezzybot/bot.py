@@ -16,7 +16,7 @@ class Socket(object):
     '''Handles receiving and sending data'''
     def __init__(self, ipv6=False, ssl=False, proxy=False, proxy_host=None, proxy_port=None, proxy_type=None):
         self.attachments = []
-        
+
         if proxy:
             self.attachments.append("proxy")
             self.socket = socks.socksocket()
@@ -39,7 +39,7 @@ class Socket(object):
             self.part = self.socket.recv(2048)
             self.part = self.part.decode("UTF-8", "ignore")
             self.data += self.part
-        self.data = self.data.splitlines()
+        self.data = self.data.strip().split("\r\n")
         return self.data
     def printrecv(self):
         self.received_message = self.recv()
@@ -83,10 +83,14 @@ class ezzybot(Socket):
         self.events = builtin.events
         self.modules = {}
     def importmodule(self, module_name, path, do_reload=False):
-        self.modules[module_name] = importlib.import_module(module_name)
-        if do_reload:
-            hook.events=[]
-            self.modules[module_name] = reload(self.modules[module_name])
+        try:
+            self.modules[module_name] = importlib.import_module(module_name)
+            if do_reload:
+                hook.events=[]
+                self.modules[module_name] = reload(self.modules[module_name])
+        except:
+            self.log.error("Unable to (re)load {0}:".format(module_name))
+            traceback.print_exc()
         self.mtimes[module_name] = os.path.getmtime(path)
     def run(self, config=None):
         if self.config is None and config is None:
@@ -103,12 +107,12 @@ class ezzybot(Socket):
             self.db['users'] = {}
         #Set some attributes for things
         self.limit = Limit(self.config.command_limiting_initial_tokens, self.config.command_limiting_message_cost, self.config.command_limiting_restore_rate, self.config.limit_override, self.config.permissions)
-        
+
         self.pingfreq = 15
         self.timeout = self.pingfreq * 2
-        
+
         #self.importPlugins()
-        
+
         self._connect()
     go = run
     def _connect(self):
@@ -119,7 +123,7 @@ class ezzybot(Socket):
         self.do_regain = False
         self.ping_timer = threading.Timer(self.pingfreq, self.ping)
         self.ping_timer.daemon = True
-        
+
         self.repl = repl.Repl({"bot": self, "irc": self.socket, "conn": wrappers.connection_wrapper(self)})
         try:
             self.loop()
@@ -128,8 +132,8 @@ class ezzybot(Socket):
         finally:
             self.socket.close()
             self.db.close()
-            
-    
+
+
     def ping(self):
         now = time.time()
         diff = now - self.last_ping
@@ -176,8 +180,48 @@ class ezzybot(Socket):
         while True:
             self.received = self.printrecv()
             for received_message in self.received:
+                #TODO FIX
+                for module in glob.glob(os.path.join(os.getcwd(), "plugins", "*.py")):
+                    import_name = "plugins."+module.split(os.path.sep)[-1][:-3]
+                    if import_name in self.mtimes.keys():
+                        if os.path.getmtime(module) != self.mtimes[import_name]:
+                            #for event in self.events:
+                            #    if event.__module__ == import_name:
+                            #        print("Deleting a old event from {0}".format(module))
+                            #        del self.events[self.events.index(event)]
+
+                            hook.events=[]
+                            self.importmodule(import_name, module, True)
+
+                            #add module attribute
+                            for event in hook.events:
+                                self.log.debug("New {0} found: {1}".format(event._event, event.__name__))
+                                hook.events[hook.events.index(event)].__module__ = import_name
+
+                                #for evn in self.events:
+                                for evn in [e for e in self.events if e.__module__ == import_name]:
+                                    #Delete duplicates
+                                    if hook.events[hook.events.index(event)].__name__ == evn.__name__:
+                                        self.log.debug("Deleting a old {0}: {1}".format(evn._event, evn.__name__))
+                                        del self.events[self.events.index(evn)]
+                                    #Delete renamed events
+                                    if evn.__module__ == import_name and evn.__name__ not in [e.__name__ for e in hook.events]:
+                                        self.log.debug("Deleting a old {0}: {1}".format(evn._event, evn.__name__))
+                                        del self.events[self.events.index(evn)]
+
+                            self.log.debug("Reloaded plugin " + str(module))
+                            self.events = hook.events + self.events
+                    else:
+                        hook.events = []
+                        self.importmodule(import_name, module)
+                        #add module attribute
+                        for event in hook.events:
+                            self.log.debug("New {0} found: {1}".format(event._event, event.__name__))
+                            hook.events[hook.events.index(event)].__module__ = import_name
+                        self.log.debug("New plugin "+str(module))
+                        self.events = hook.events+self.events
                 received_message = received_message.replace(":", "", 1)
-                split_message = received_message.split()
+                split_message = received_message.split(" ")
                 if split_message[0] == "PING":
                     self.send("PONG {0}".format(" ".join(split_message[1:])))
                 if split_message[1] == "PONG":
@@ -203,7 +247,7 @@ class ezzybot(Socket):
                     self.connected = True
                     self.last_ping = time.time()
                     self.ping_timer.start()
-                    if self.config.do_auth or self.config.sasl and self.do_regain:
+                    if (self.config.do_auth or self.config.sasl) and self.do_regain:
                         self.do_regain = False
                         self.send("PRIVMSG NickServ :REGAIN {0} {1}".format(self.config.first_nick, self.config.auth_pass))
                         time.sleep(3)
@@ -226,6 +270,9 @@ class ezzybot(Socket):
                     self._info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args, "raw": self.ircmsg}
                     self.info = other.toClass(self._info)
                     info=self.info
+                    permissions_wrapper = wrappers.permissions_class(self.config.permissions)
+                    if permissions_wrapper.check(["ignore"], self.mask):
+                        continue
                     if self.message.startswith("\x01"):
                         ctcp = self.message.replace("\x01", "").upper()
                         if ctcp in self.ctcp.keys():
@@ -235,9 +282,9 @@ class ezzybot(Socket):
                                 result = self.ctcp[ctcp]
                             self.send("NOTICE {0} :{1} {2}".format(self.nick, ctcp, result))
                     for function in [func for func in self.events if func._event == "command"]:
-                        if (function._prefix+function._commandname).lower() == self.command:
+                        if (function._prefix+function._commandname).lower() == self.command or (
+                            function._commandname.lower() == self.command and self.channel == self.config.nick):
                             func = function
-                            permissions_wrapper = wrappers.permissions_class(self.config.permissions)
                             if permissions_wrapper.check(func._perms, self.mask) or func._perms == "all":
                                 if self.limit.command_limiter(info):
                                     self.plugin_wrapper=wrappers.connection_wrapper(self)
@@ -255,7 +302,12 @@ class ezzybot(Socket):
                         if result:
                             self._info['regex'] = result
                             self.info = other.toClass(self._info)
-                            self.run_trigger(regex, wrappers.connection_wrapper(self), self.info)
+                            if regex._thread:
+                                regex_thread = threading.Thread(target=self.run_trigger, args=(regex, wrappers.connection_wrapper(self), self.info))
+                                regex_thread.daemon = True
+                                regex_thread.start()
+                            else:
+                                self.run_trigger(regex, wrappers.connection_wrapper(self), self.info)
                     if self.nick not in self.db['users'].keys():
                         self.db['users'][info.nick] = {}
                     self.db['users'][info.nick]['last_seen'] = time.time()
@@ -267,50 +319,13 @@ class ezzybot(Socket):
                         self.db['users'][info.nick]['channels'].append(info.channel)
                 for trigger in [func for func in self.events if func._event == "trigger"]:
                     if trigger._trigger == "*" or trigger._trigger.upper() == split_message[1].upper():
-                        self.run_trigger(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}))
-                
-                #TODO FIX
-                for module in glob.glob(os.path.join(os.getcwd(), "plugins", "*.py")):
-                    import_name = "plugins."+module.split(os.path.sep)[-1].strip(".py")
-                    if import_name in self.mtimes.keys():
-                        if os.path.getmtime(module) != self.mtimes[import_name]:
-                            #for event in self.events:
-                            #    if event.__module__ == import_name:
-                            #        print("Deleting a old event from {0}".format(module))
-                            #        del self.events[self.events.index(event)]
-                            
-                            hook.events=[]
-                            self.importmodule(import_name, module, True)
-                            
-                            #add module attribute
-                            for event in hook.events:
-                                self.log.debug("New {0} found: {1}".format(event._event, event.__name__))
-                                hook.events[hook.events.index(event)].__module__ = import_name
+                        if trigger._thread:
+                            trigger_thread = threading.Thread(target=self.run_trigger, args=(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}),))
+                            trigger_thread.daemon = True
+                            trigger_thread.start()
+                        else:
+                            self.run_trigger(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}))
 
-                                #for evn in self.events: 
-                                for evn in [e for e in self.events if e.__module__ == import_name]:
-                                    #Delete duplicates
-                                    if hook.events[hook.events.index(event)].__name__ == evn.__name__:
-                                        self.log.debug("Deleting a old {0}: {1}".format(evn._event, evn.__name__))
-                                        del self.events[self.events.index(evn)]
-                                    #Delete renamed events
-                                    if evn.__module__ == import_name and evn.__name__ not in [e.__name__ for e in hook.events]:
-                                        self.log.debug("Deleting a old {0}: {1}".format(evn._event, evn.__name__))
-                                        del self.events[self.events.index(evn)]
-                            
-                            self.log.debug("Reloaded plugin " + str(module))
-                            self.events = hook.events + self.events
-                    else:
-                        hook.events = []
-                        self.importmodule(import_name, module)
-                        #add module attribute
-                        for event in hook.events:
-                            self.log.debug("New {0} found: {1}".format(event._event, event.__name__))
-                            hook.events[hook.events.index(event)].__module__ = import_name
-                        self.log.debug("New plugin "+str(module))
-                        self.events = hook.events+self.events
-                        
-                        
     def run_plugin(self, function, plugin_wrapper, channel, info):
         """run_plugin(hello, plugin_wrapper, channel, info)
         Runs function and prints result/error to irc.
