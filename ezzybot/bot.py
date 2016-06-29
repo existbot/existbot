@@ -2,6 +2,7 @@ from .__init__ import __version__
 from .util.config import config as Config
 from .limit import Limit
 from . import wrappers, builtin, util, logging
+from . import event as Event
 from .util import hook, colours, repl, other
 import pyfiglet, sys, requests, socks, socket, time, threading, os, glob, traceback, re, glob, thingdb, warnings, importlib
 import ssl as _ssl
@@ -148,24 +149,23 @@ class ezzybot(Socket):
         self.send("CAP REQ :sasl")
         while True:
             for line in self.printrecv():
-                line = line.split()
-                if line[0] == "AUTHENTICATE":
-                    if line[1] == "+":
+                e = Event.Event(line)
+                if e.type == "AUTHENTICATE":
+                    if e.arguments[0] == "+":
                         saslstring = b64encode("{0}\x00{0}\x00{1}".format(
                                         self.config.auth_user,
                                         self.config.auth_pass).encode("UTF-8"))
                         self.send("AUTHENTICATE {0}".format(saslstring.decode("UTF-8")))
-                elif line[1] == "CAP":
-                    if line[3] == "ACK":
-                        line[4] = line[4].strip(":")
-                        caps = line[4:]
+                elif e.type == "CAP":
+                    if e.arguments[0] == "ACK":
+                        caps = e.arguments[1].split()
                         if "sasl" in caps:
                             self.send("AUTHENTICATE PLAIN")
-                elif line[1] == "903":
+                elif e.type == "903":
                     self.send("CAP END")
                     return True
-                elif line[1] == "904" or line[1] == "905" or line[1] == "906":
-                    error = " ".join(line[2:]).strip(":")
+                elif e.type == "904" or e.type == "905" or e.type == "906":
+                    error = e.arguments[0]
                     self.send("QUIT :[ERROR] {0}".format(error))
                     raise SASLError(error)
 
@@ -220,21 +220,20 @@ class ezzybot(Socket):
                             hook.events[hook.events.index(event)].__module__ = import_name
                         self.log.debug("New plugin "+str(module))
                         self.events = hook.events+self.events
-                received_message = received_message.replace(":", "", 1)
-                split_message = received_message.split(" ")
-                if split_message[0] == "PING":
-                    self.send("PONG {0}".format(" ".join(split_message[1:])))
-                if split_message[1] == "PONG":
+                e = Event.Event(received_message)
+                if e.type == "PING":
+                    self.send("PONG :{0}".format(e.arguments[0]))
+                if e.type == "PONG":
                     self.last_ping = time.time()
-                if split_message[0] == "ERROR":
-                    if "Nickname regained by services" in received_message:
+                if e.type == "ERROR":
+                    if "Nickname regained by services" in e.arguments[0]:
                         raise NickRegain(received_message)
                     if self.ping_timer.isAlive():
                         self.ping_timer.cancel()
                     self.close()
                     self._connect()
                 if not self.connected:
-                    if split_message[1] == "433" or split_message[1] == "437":
+                    if e.type == "433" or e.type == "437":
                         self.do_regain = True
                         if not hasattr(self.config, "first_nick"):
                             self.config.first_nick = self.config.nick
@@ -243,7 +242,7 @@ class ezzybot(Socket):
                         else:
                             self.config.nick = self.config.nick+"_"
                         self.send("NICK {0}".format(self.config.nick))
-                if split_message[1] == "001":
+                if e.type == "001":
                     self.connected = True
                     self.last_ping = time.time()
                     self.ping_timer.start()
@@ -257,24 +256,20 @@ class ezzybot(Socket):
                         self.send("PRIVMSG NickServ :IDENTIFY {0} {1}".format(self.config.auth_user, self.config.auth_pass))
                     for channel in self.config.channels:
                         self.send("JOIN {0}".format(channel))
-                if split_message[1] == "PRIVMSG":
-                    self.ircmsg = received_message
-                    self.nick = self.ircmsg.split("!")[0]
-                    self.channel = self.ircmsg.split(' PRIVMSG ')[-1].split(' :')[0]
-                    self.hostname = self.ircmsg.split(" PRIVMSG ")[0].split("@")[1].replace(" ","")
-                    self.ident = self.ircmsg.split(" PRIVMSG ")[0].split("@")[0].split("!")[1]
-                    self.mask = self.ircmsg.split(" PRIVMSG ")[0]
-                    self.message = self.ircmsg.split(" :",1)[1]
-                    self.command = self.ircmsg.split(" :",1)[1].split(" ")[0]
-                    self.args = self.message.replace(self.command, "")
-                    self._info = {"nick": self.nick, "channel": self.channel, "hostname": self.hostname, "ident": self.ident, "mask": self.mask, "message": self.message, "args": self.args, "raw": self.ircmsg}
+                if e.type == "PRIVMSG":
+                    if len(e.arguments[0].split(" ", 1)) > 1:
+                        self.command, self.args = e.arguments[0].split(" ", 1)
+                    else:
+                        self.command = e.arguments[0].split(" ", 1)[0]
+                        self.args = ""
+                    self._info = {"event": e, "args": self.args}
                     self.info = other.toClass(self._info)
-                    info=self.info
+                    info = self.info
                     permissions_wrapper = wrappers.permissions_class(self.config.permissions)
-                    if permissions_wrapper.check(["ignore"], self.mask):
+                    if permissions_wrapper.check(["ignore"], e.source):
                         continue
-                    if self.message.startswith("\x01"):
-                        ctcp = self.message.replace("\x01", "").upper()
+                    if e.arguments[0].startswith("\x01") and e.arguments[0].endswith("\x01"):
+                        ctcp = e.arguments[0].replace("\x01", "").upper()
                         if ctcp in self.ctcp.keys():
                             if callable(self.ctcp[ctcp]):
                                 result = self.ctcp[ctcp]()
@@ -283,20 +278,20 @@ class ezzybot(Socket):
                             self.send("NOTICE {0} :{1} {2}".format(self.nick, ctcp, result))
                     for function in [func for func in self.events if func._event == "command"]:
                         if (function._prefix+function._commandname).lower() == self.command or (
-                            function._commandname.lower() == self.command and self.channel == self.config.nick):
+                            function._commandname.lower() == self.command.lower() and e.target == self.config.nick):
                             func = function
-                            if permissions_wrapper.check(func._perms, self.mask) or func._perms == "all":
+                            if permissions_wrapper.check(func._perms, e.source) or func._perms == "all":
                                 if self.limit.command_limiter(info):
                                     self.plugin_wrapper=wrappers.connection_wrapper(self)
                                     if func._thread:
-                                        plugin_thread= threading.Thread(target=self.run_plugin, args=(func, self.plugin_wrapper,self.channel,self.info,))
+                                        plugin_thread= threading.Thread(target=self.run_plugin, args=(func, self.plugin_wrapper,e.target,self.info))
                                         plugin_thread.daemon = True
                                         plugin_thread.start()
                                     else:
-                                        self.run_plugin(func, self.plugin_wrapper,self.channel,self.info)
+                                        self.run_plugin(func, self.plugin_wrapper,e.target,self.info)
                                 else:
                                     self.plugin_wrapper=wrappers.connection_wrapper(self)
-                                    self.plugin_wrapper.notice(info.nick, "This command is rate limited, please try again later")
+                                    self.plugin_wrapper.notice(e.source.nick, "This command is rate limited, please try again later")
                     for regex in [reg for reg in self.events if reg._event == "regex"]:
                         result = re.findall(regex._regex, received_message)
                         if result:
@@ -308,23 +303,23 @@ class ezzybot(Socket):
                                 regex_thread.start()
                             else:
                                 self.run_trigger(regex, wrappers.connection_wrapper(self), self.info)
-                    if self.nick not in self.db['users'].keys():
-                        self.db['users'][info.nick] = {}
-                    self.db['users'][info.nick]['last_seen'] = time.time()
-                    self.db['users'][info.nick]['last_msg'] = self.ircmsg
-                    self.db['users'][info.nick]['mask'] = self.mask
-                    if "channels" not in self.db['users'][info.nick].keys():
-                        self.db['users'][info.nick]['channels']=[]
-                    if info.channel not in self.db['users'][info.nick]['channels']:
-                        self.db['users'][info.nick]['channels'].append(info.channel)
+                    if e.source.nick not in self.db['users'].keys():
+                        self.db['users'][e.source.nick] = {}
+                    self.db['users'][e.source.nick]['last_seen'] = time.time()
+                    self.db['users'][e.source.nick]['last_msg'] = e.raw
+                    self.db['users'][e.source.nick]['mask'] = e.source
+                    if "channels" not in self.db['users'][e.source.nick].keys():
+                        self.db['users'][e.source.nick]['channels']=[]
+                    if e.target not in self.db['users'][e.source.nick]['channels']:
+                        self.db['users'][e.source.nick]['channels'].append(e.target)
                 for trigger in [func for func in self.events if func._event == "trigger"]:
-                    if trigger._trigger == "*" or trigger._trigger.upper() == split_message[1].upper():
+                    if trigger._trigger == "*" or trigger._trigger.upper() == e.type.upper():
                         if trigger._thread:
-                            trigger_thread = threading.Thread(target=self.run_trigger, args=(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}),))
+                            trigger_thread = threading.Thread(target=self.run_trigger, args=(trigger, wrappers.connection_wrapper(self), e))
                             trigger_thread.daemon = True
                             trigger_thread.start()
                         else:
-                            self.run_trigger(trigger, wrappers.connection_wrapper(self), other.toClass({"raw": received_message}))
+                            self.run_trigger(trigger, wrappers.connection_wrapper(self), e)
 
     def run_plugin(self, function, plugin_wrapper, channel, info):
         """run_plugin(hello, plugin_wrapper, channel, info)
@@ -339,12 +334,12 @@ class ezzybot(Socket):
             self.output =function(info=info, conn=plugin_wrapper)
             if self.output != None:
                 if channel.startswith("#"):
-                    plugin_wrapper.msg(channel,"[{0}] {1}".format(info.nick, str(self.output)))
+                    plugin_wrapper.msg(channel,"[{0}] {1}".format(info.event.source.nick, str(self.output)))
                 else:
-                    plugin_wrapper.msg(info.nick,"| "+str(self.output))
+                    plugin_wrapper.msg(info.event.source.nick,"| "+str(self.output))
         except Exception as e:
             traceback.print_exc()
-            plugin_wrapper.msg(self.config.log_channel, self.colours.VIOLET+"Caused by {0}, using command '{1}' in {2}".format(info.mask, info.message, info.channel))
+            plugin_wrapper.msg(self.config.log_channel, self.colours.VIOLET+"Caused by {0}, using command '{1}' in {2}".format(info.event.source, info.event.arguments[0], info.event.target))
             if channel != self.config.log_channel:
                 plugin_wrapper.msg(channel, self.colours.RED+"Error! See {0} for more info.".format(self.config.log_channel))
             for line in str(e).split("\n"):

@@ -24,7 +24,7 @@ class Limit(object):
 
     def command_limiter(self, info):
         #Check if admin/whatever specified
-        if self.permissions.check(self.override, info.mask):
+        if self.permissions.check(self.override, info.event.source):
             return True
         if info.nick not in self.buckets:
             bucket = tokenbucket.TokenBucket(self.command_limiting_initial_tokens, self.command_limiting_restore_rate)

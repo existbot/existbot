@@ -6,7 +6,11 @@ class Event(object):
         self.raw = raw
         if raw.startswith(":"):
             raw = raw.replace(":", "", 1)
-            self.source, self.type, self.target, args = raw.split(" ", 3)
+            if len(raw.split(" ", 3)) > 3:
+                self.source, self.type, self.target, args = raw.split(" ", 3)
+            else:
+                self.source, self.type, self.target = raw.split(" ", 3)
+                args = ""
             self.source = NickMask(self.source)
         else:
             self.type, args = raw.split(" ", 1)
@@ -24,7 +28,8 @@ class Event(object):
             "type: {type}, "
             "source: {source}, "
             "target: {target}, "
-            "arguments: {arguments}"
+            "arguments: {arguments}, "
+            "raw: {raw}"
         )
         return tmpl.format(**vars(self))
 
