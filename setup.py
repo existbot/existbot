@@ -16,7 +16,7 @@ setup(name='ezzybot',
       author_email='me@lukej.me',
       license='GNU',
       packages=find_packages(),
-      install_requires=['thingdb', 'pysocks', 'requests', 'pyfiglet'],
+      install_requires=['thingdb', 'pysocks', 'requests', 'pyfiglet', 'six'],
       include_package_data=True,
       entry_points={
           'console_scripts': [
